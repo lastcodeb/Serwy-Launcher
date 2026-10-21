@@ -1,0 +1,9 @@
+<resources>
+    <color name="neon_bg">#FF07060F</color>
+    <!-- Dark window background so the starting window never flashes white -->
+    <style name="Theme.Neon" parent="android:Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/neon_bg</item>
+        <item name="android:colorBackground">@color/neon_bg</item>
+        <item name="android:navigationBarColor">@color/neon_bg</item>
+    </style>
+</resources>

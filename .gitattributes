@@ -1,0 +1,10 @@
+# Shell scripts and the Gradle wrapper must keep LF or they break on Linux/macOS
+*.sh     text eol=lf
+gradlew  text eol=lf
+# Windows-only scripts
+*.bat    text eol=crlf
+*.ps1    text eol=crlf
+# Binary assets
+*.png    binary
+*.ttf    binary
+*.jar    binary

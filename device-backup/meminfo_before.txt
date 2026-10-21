@@ -1,0 +1,103 @@
+﻿MemTotal:        2038112 kB
+MemFree:           84896 kB
+MemAvailable:     726892 kB
+Buffers:           31340 kB
+Cached:           688732 kB
+SwapCached:         8200 kB
+Active:           710616 kB
+Inactive:         635524 kB
+Active(anon):     328432 kB
+Inactive(anon):   309080 kB
+Active(file):     382184 kB
+Inactive(file):   326444 kB
+Unevictable:        3868 kB
+Mlocked:            3868 kB
+SwapTotal:        393212 kB
+SwapFree:          92164 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:        624768 kB
+Mapped:           490240 kB
+Shmem:              8128 kB
+KReclaimable:      48508 kB
+Slab:             155040 kB
+SReclaimable:      43824 kB
+SUnreclaim:       111216 kB
+KernelStack:       33840 kB
+ShadowCallStack:    2115 kB
+PageTables:        43436 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     1412268 kB
+Committed_AS:   38340236 kB
+VmallocTotal:   262930368 kB
+VmallocUsed:       93936 kB
+VmallocChunk:          0 kB
+Percpu:             2992 kB
+CmaTotal:         692224 kB
+CmaFree:           10640 kB
+DriverCma:        114724 kB
+VmapStack:         11208 kB
+VmapFault:          8780 kB
+VmapPfault:            0 kB
+Applications Memory Usage (in Kilobytes):
+Uptime: 15186379 Realtime: 112013961
+
+
+Total RSS by process:
+    224,136K: com.google.android.gms (pid 23578)
+    210,484K: com.google.android.apps.tv.launcherx (pid 1431 / activities)
+    206,836K: system (pid 566)
+    199,712K: com.android.tv.settings (pid 2979 / activities)
+    165,208K: com.google.android.gms.unstable (pid 2137)
+    158,508K: com.netflix.ninja (pid 2611 / activities)
+    158,040K: com.google.android.apps.tv.dreamx:smarthome (pid 2818)
+    155,828K: com.google.android.gms.ui (pid 3096)
+    148,128K: com.google.android.katniss:interactor (pid 23983)
+    147,756K: com.google.android.katniss:search (pid 1229)
+    133,708K: com.android.vending (pid 2815)
+    132,140K: com.google.android.apps.tv.dreamx (pid 2417)
+    116,892K: com.google.android.apps.tv.launcherx:coreservices (pid 1453)
+    114,628K: com.amazon.amazonvideo.livingroom (pid 1692)
+    112,820K: com.android.vending:background (pid 2290)
+    110,896K: com.android.systemui (pid 714)
+    106,808K: com.mitv.tvhome.oemtab (pid 1886)
+     94,860K: com.xiaomi.mitv.updateservice (pid 23062)
+     92,064K: com.google.android.inputmethod.latin (pid 1177)
+     91,916K: com.spotify.tv.android (pid 1543)
+     89,780K: com.mitv.tvhome.atv (pid 25422)
+     87,612K: com.google.android.apps.mediashell (pid 2246)
+     85,932K: com.bp.box (pid 21684)
+     85,128K: com.miui.tv.analytics (pid 3760)
+     83,716K: com.google.android.tungsten.setupwraith (pid 1134)
+     77,748K: com.xiaomi.gtv.settings (pid 3050)
+     77,744K: xiaomi.tvservice (pid 1326)
+     77,044K: android.process.acore (pid 2599)
+     76,800K: com.google.android.webview:webview_service (pid 3210)
+     74,724K: com.google.android.permissioncontroller (pid 3328)
+     73,852K: com.google.android.tv.remote.service (pid 1088)
+     72,744K: com.android.providers.tv (pid 25099)
+     72,400K: com.google.process.gservices (pid 1254)
+     70,108K: com.android.bluetooth (pid 693)
+     68,540K: com.google.android.ext.services (pid 971)
+     68,072K: com.droidlogic.googletv.settings (pid 1380)
+     67,132K: com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0 (pid 3166)
+     65,060K: com.xiaomi.android.tvsetup.partnercustomizer (pid 1349)
+     63,548K: com.android.settings.intelligence (pid 3029)
+     60,460K: com.droidlogic (pid 736)
+     58,676K: com.android.providers.media.module (pid 1302)
+     55,736K: com.mi.bluetooth (pid 1398)
+     50,772K: zygote (pid 311)
+     43,624K: com.android.se (pid 858)
+     28,776K: webview_zygote (pid 806)
+     13,312K: surfaceflinger (pid 381)
+      8,440K: android.hardware.audio.service-droidlogic (pid 335)
+      7,684K: audioserver (pid 378)
+      5,892K: mediaserver (pid 475)
+      5,884K: logd (pid 223)
+      5,600K: wpa_supplicant (pid 689)
+      5,212K: netd (pid 310)
+      5,132K: media.extractor (pid 473)
+      4,884K: android.hardware.drm@1.3-service.widevine (pid 344)
+      4,848K: media.metrics (pid 474)

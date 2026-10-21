@@ -1,0 +1,14 @@
+﻿package:com.internet.tvbrowser
+package:com.alphainventor.filemanager
+package:com.spotify.tv.android
+package:com.digiturk.iq.mobil
+package:com.trt.tabii.android
+package:com.wbd.stream
+package:com.bp.box
+package:com.hdobox
+package:com.rectv.rectv1
+package:net.mullvad.mullvadvpn
+package:com.turkcell.ott
+package:com.esaba.downloader
+package:com.apple.atve.androidtv.appletv
+package:com.disney.disneyplus

@@ -1,0 +1,4 @@
+﻿window_animation_scale=1.0
+transition_animation_scale=1.0
+animator_duration_scale=null
+background_process_limit=null

@@ -1,0 +1,22 @@
+# Toolchain downloaded by the setup steps (JDK, Android SDK, Gradle) and adb
+tools/
+platform-tools/
+
+# Gradle / Android build output
+launcher/.gradle/
+launcher/build/
+launcher/app/build/
+launcher/.kotlin/
+*.apk
+*.aab
+
+# Machine-specific and secret: SDK path and the Pixabay API key
+launcher/local.properties
+
+# Written by install.ps1 on each machine
+launcher/previous_home.txt
+
+# IDE
+.idea/
+*.iml
+.vscode/
