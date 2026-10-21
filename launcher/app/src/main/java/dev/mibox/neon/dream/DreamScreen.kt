@@ -202,9 +202,15 @@ private object SkyCache {
     ).also { cache = it }
 }
 
-/** 4K files only when the HDMI output really is 4K; otherwise 1080p saves bandwidth. */
-private fun supportsUhd(ctx: Context): Boolean {
-    val display = (ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager)
-        .getDisplay(android.view.Display.DEFAULT_DISPLAY) ?: return false
-    return display.supportedModes.any { it.physicalWidth >= 3840 } && display.mode.physicalWidth >= 3840
-}
+/**
+ * Whether to stream 4K files. Amlogic boxes report only the 1080p UI framebuffer as the display
+ * mode, even when the vendor service drives HDMI at 2160p, so the display cannot tell us. Ask the
+ * hardware decoder instead: if it decodes 3840×2160 H.264 at 30 fps, take the 4K renditions.
+ */
+private fun supportsUhd(@Suppress("UNUSED_PARAMETER") ctx: Context): Boolean = runCatching {
+    android.media.MediaCodecList(android.media.MediaCodecList.REGULAR_CODECS).codecInfos.any { info ->
+        !info.isEncoder && info.isHardwareAccelerated &&
+            info.supportedTypes.any { it.equals("video/avc", ignoreCase = true) } &&
+            info.getCapabilitiesForType("video/avc").videoCapabilities.areSizeAndRateSupported(3840, 2160, 30.0)
+    }
+}.getOrDefault(false)

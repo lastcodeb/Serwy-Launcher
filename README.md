@@ -70,8 +70,8 @@ Local UDP control (port 38899), no cloud, discovered automatically.
 A real Android `DreamService`: real sea-and-sky footage (Pixabay) chosen by the **actual time of
 day and weather** in your city: moonlit sea, sunrise, open sea, sunset, clouds, rain, storm,
 fog, snow. Sunrise and sunset times come from Open-Meteo. Hardware-decoded, streamed through a
-100 MB cache, 4K when the HDMI output is 4K. Clock, date and weather on top; the WiZ light
-follows the scene and is restored afterwards.
+100 MB cache, 4K whenever the hardware H.264 decoder can handle it. Clock, date and weather on
+top; the WiZ light follows the scene and is restored afterwards.
 
 ### Debloat
 `debloat.sh` disables (never uninstalls) Xiaomi analytics, ad and recommendation packages and
@@ -87,7 +87,7 @@ other unused system apps, lowers animation scales, and swaps the Google TV launc
 | Box | Xiaomi Mi TV Box S (2nd Gen), model `MiTV-AFKR0`, codename `jaws`, Amlogic SoC |
 | OS | Google TV, Android 11 (SDK 30), build `RTT0.211222.001.767` |
 | RAM | 2 GB |
-| UI | 1920×1080 @ 320 dpi (960×540 dp) |
+| UI | 1920×1080 @ 320 dpi (960×540 dp), HDMI output 2160p60 |
 | Light | WiZ TV Sync Box `SYBX-EU-55/65`, module `ESP27_MHORGB_01`, firmware 1.39.1 |
 | PC | Windows 11 |
 
@@ -392,7 +392,7 @@ Measured on the box above.
 | RAM on the home screen (PSS) | ~96–99 MB |
 | RAM while another app is in front (PSS) | ~81 MB (was 143 MB before trimming) |
 | Projectivy Launcher, same box, for comparison | ~87 MB on the home screen |
-| Screensaver video decoding | hardware (`OMX.amlogic.avc.decoder`), ~9 % CPU |
+| Screensaver video decoding | hardware (`OMX.amlogic.avc.decoder`), 3840×2160, ~9 % CPU |
 
 ---
 
@@ -424,8 +424,11 @@ Measured on the box above.
 - **WiZ firmware updates** only come through the WiZ app / cloud (`autoUpd` is on).
 - **TV-sync brightness** of the WiZ Sync Box is decided by the box itself; the colour channel
   gains in its config (`renderFactor`) are undocumented and left untouched.
-- **4K screensaver** needs the HDMI output itself at 4K; this box was outputting 1080p, so 1080p
-  clips are used.
+- **HDMI output vs. Android display mode**: on Amlogic boxes Android only reports the 1080p UI
+  framebuffer (`supportedModes` lists a single 1920×1080 mode) even when HDMI runs at 2160p; the
+  real mode only shows in `dumpsys SurfaceFlinger` (`FixedSizeModeMgr:(2160p60hz)`). Pick 4K in
+  **Settings → Display & Sound → Resolution**. The screensaver therefore decides on 4K from the
+  decoder's capabilities, not from the display mode.
 - The debloat list and some UI choices are specific to this Xiaomi model.
 
 ---
