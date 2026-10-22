@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.compose.runtime.Immutable
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 
 /** One "continue watching" entry an app published to the system Watch Next list. */
 @Immutable
@@ -20,6 +21,19 @@ data class WatchItem(
     val progress: Float?,
     val lastEngaged: Long,
 )
+
+/**
+ * Identity of a pinned item. The Watch Next row id changes whenever the app republishes the
+ * program, so a pin is identified by app + launch intent (or title when there is none).
+ */
+fun WatchItem.pinKey(): String {
+    val raw = "$pkg|${intentUri ?: "$title|$subtitle"}"
+    return MessageDigest.getInstance("SHA-1").digest(raw.toByteArray())
+        .joinToString("") { "%02x".format(it) }.take(12)
+}
+
+/** Pinned items need an id that can never collide with a TvProvider row id (those are positive). */
+fun stablePinId(key: String): Long = -(key.hashCode().toLong() and 0x7fffffffL) - 1
 
 object WatchNext {
     private val URI = Uri.parse("content://android.media.tv/watch_next_program")
@@ -100,10 +114,10 @@ object WatchNext {
         return cropped.copy(Bitmap.Config.RGB_565, false).also { cropped.recycle() }
     }
 
-    /** Thumbnails are content://, android.resource:// or https URLs; decoded near the card size. */
-    fun loadImage(ctx: Context, uri: String, wPx: Int, hPx: Int): Bitmap? = runCatching {
+    /** Raw bytes of a content://, file://, android.resource:// or https image; null if unreadable. */
+    fun readBytes(ctx: Context, uri: String): ByteArray? = runCatching {
         val u = Uri.parse(uri)
-        val bytes = when (u.scheme) {
+        when (u.scheme) {
             "http", "https" -> (URL(uri).openConnection() as HttpURLConnection).run {
                 connectTimeout = 5000
                 readTimeout = 8000
@@ -114,7 +128,12 @@ object WatchNext {
                 }
             }
             else -> ctx.contentResolver.openInputStream(u)?.use { it.readBytes() }
-        } ?: return null
+        }
+    }.getOrNull()
+
+    /** Thumbnails are content://, android.resource:// or https URLs; decoded near the card size. */
+    fun loadImage(ctx: Context, uri: String, wPx: Int, hPx: Int): Bitmap? = runCatching {
+        val bytes = readBytes(ctx, uri) ?: return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
         var sample = 1

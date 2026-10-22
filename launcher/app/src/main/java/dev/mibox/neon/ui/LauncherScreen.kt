@@ -1,5 +1,6 @@
 package dev.mibox.neon.ui
 
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -16,6 +17,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -43,7 +46,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.data.HeroReason
+import dev.mibox.neon.data.PinResult
+import dev.mibox.neon.data.WatchItem
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val IDLE_MS = 30_000L
 private const val SHOWCASE_SLIDE_MS = 7_000L
@@ -51,7 +58,7 @@ private const val SHOWCASE_SLIDE_MS = 7_000L
 @Composable
 fun LauncherScreen(vm: LauncherViewModel) {
     val apps by vm.apps.collectAsStateWithLifecycle()
-    val favorites by vm.pinnedApps.collectAsStateWithLifecycle()
+    val favorites by vm.favoriteCards.collectAsStateWithLifecycle()
     val watch by vm.watchNext.collectAsStateWithLifecycle()
     val forYou by vm.forYou.collectAsStateWithLifecycle()
     val watchLoaded by vm.watchLoaded.collectAsStateWithLifecycle()
@@ -62,9 +69,32 @@ fun LauncherScreen(vm: LauncherViewModel) {
     val rows = remember { RowsController() }
     val firstRow = rowKeys(favorites, watch, forYou).first()
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
+    var contentMenuFor by remember { mutableStateOf<WatchItem?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showLight by remember { mutableStateOf(false) }
     var showControl by remember { mutableStateOf(false) }
+    var showNet by remember { mutableStateOf(false) }
+    var showWrapped by remember { mutableStateOf(false) }
+    var showMatch by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    // Toasts outlive the launcher going to the background, unlike anything drawn here
+    val context = LocalContext.current.applicationContext
+    LaunchedEffect(Unit) {
+        vm.pinResult.collect { r ->
+            val text = when (r) {
+                PinResult.Added -> "Favorilere eklendi"
+                PinResult.Removed -> "Favorilerden çıkarıldı"
+                PinResult.Full -> "Favoriler dolu (en fazla 12 içerik)"
+            }
+            Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+        }
+    }
+    LaunchedEffect(Unit) {
+        vm.netWarning.collect { w ->
+            Toast.makeText(context, "Bağlantı 4K için yetersiz (${fmtMbps(w.mbps)} Mbps)", Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Polling only while the home screen is actually visible
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -100,12 +130,16 @@ fun LauncherScreen(vm: LauncherViewModel) {
     LaunchedEffect(Unit) {
         vm.homePressed.collect {
             menuFor = null
+            contentMenuFor = null
             showMenu = false
             showLight = false
             showControl = false
+            showNet = false
+            showWrapped = false
+            showMatch = false
             focus.value = null
             rows.scrollAllToStart()
-            rows.focus(rowKeys(vm.pinnedApps.value, vm.watchNext.value, vm.forYou.value).first())
+            rows.focus(rowKeys(vm.favoriteCards.value, vm.watchNext.value, vm.forYou.value).first())
         }
     }
 
@@ -126,10 +160,36 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 onOpenMenu = { showMenu = true },
                 onOpenLight = { showLight = true },
                 onOpenControl = { showControl = true },
+                onOpenNet = { showNet = true },
+                onOpenMatch = { showMatch = true },
             )
         }
-        RowsArea(vm, favorites, apps, watch, forYou, moving, rows, focus, onMenu = { menuFor = it })
+        RowsArea(
+            vm, favorites, apps, watch, forYou, moving, rows, focus,
+            onMenu = { menuFor = it },
+            onContentMenu = { contentMenuFor = it },
+        )
         FooterLabel(focus, moving != null)
+
+        contentMenuFor?.let { item ->
+            ContentMenu(
+                item,
+                vm,
+                onDismiss = { contentMenuFor = null },
+                onToggled = {
+                    contentMenuFor = null
+                    // Unpinning in Favoriler removes the focused card: take focus back once it is gone
+                    if (rows.activeKey == ROW_FAVORITES) {
+                        focus.value = null
+                        scope.launch {
+                            delay(300)
+                            val keys = rowKeys(vm.favoriteCards.value, vm.watchNext.value, vm.forYou.value)
+                            rows.focus(if (ROW_FAVORITES in keys) ROW_FAVORITES else keys.first())
+                        }
+                    }
+                },
+            )
+        }
 
         menuFor?.let { app ->
             AppMenu(
@@ -166,8 +226,23 @@ fun LauncherScreen(vm: LauncherViewModel) {
                     showControl = false
                     showMenu = true
                 },
+                onOpenNet = {
+                    showControl = false
+                    showNet = true
+                },
+                onOpenWrapped = {
+                    showControl = false
+                    showWrapped = true
+                },
+                onOpenMatch = {
+                    showControl = false
+                    showMatch = true
+                },
             )
         }
+        if (showNet) NetPanel(vm, onDismiss = { showNet = false })
+        if (showWrapped) WrappedScreen(vm, onDismiss = { showWrapped = false })
+        if (showMatch) MatchPanel(vm, onDismiss = { showMatch = false })
     }
 }
 
@@ -207,7 +282,8 @@ private fun HeroHost(vm: LauncherViewModel, focus: MutableState<Focus?>) {
         // apps are just their name
         f is Focus.Watch && f.app != null -> HeroContent(null, f.item.title, f.item.subtitle ?: f.app.label, f.app)
         f is Focus.App -> HeroContent(null, f.app.label, null, f.app)
-        h != null -> HeroContent(null, h.app.label, null, h.app)
+        // Usage history says this is what is usually opened now: say so in the eyebrow line
+        h != null -> HeroContent(if (h.reason == HeroReason.Predicted) "Genelde bu saatte" else null, h.app.label, null, h.app)
         else -> null
     }
 

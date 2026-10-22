@@ -326,7 +326,12 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 | App card | Long-press OK | Menu: move, hide, add to favorites, light profile, app info |
 | Move mode | ◀ ▶ / OK / Back | Move the card / drop it / drop it |
 | Rows | ▲ ▼ | Previous / next row; from the top row, the top bar |
-| Clock chip | OK | Control center (big clock, weather, light, system, hidden apps, city) |
+| Watch Next / Senin için card | Long-press OK | Menu: *Favorilere ekle* / *Favorilerden çıkar* (pins the episode to Favoriler) |
+| Pinned content card (Favoriler) | OK / long-press OK | Open the episode / menu: *Favorilerden çıkar* |
+| Clock chip | OK | Control center (big clock, weather, light, system, network, Neon Wrapped, match day, hidden apps, city) |
+| Speed chip | OK / long-press | Run a speed test / *Ağ durumu* panel (link, signal, latency, history) |
+| Match chip (Galatasaray) | OK | Match panel: scoreboard, *Maçı aç*, light effects, delay, preview |
+| Control center → *Neon Wrapped* | OK | Monthly story: ◀ ▶ pages, ▲ ▼ month, Back closes |
 | Light chip | OK / long-press | Light panel / toggle the first quick preset (Party) |
 | RAM chip | OK | Close background apps, shows how much was freed |
 | Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city) |

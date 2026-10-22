@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -39,6 +41,7 @@ import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import kotlinx.coroutines.delay
 
 val Pill = RoundedCornerShape(50)
 
@@ -152,6 +155,17 @@ fun Modifier.ignoreOpeningPress(): Modifier {
                 false
             }
             else -> true // repeat or release of the press that opened the dialog
+        }
+    }
+}
+
+/** Dialog windows take focus a frame late; ask until it sticks. */
+@Composable
+fun FocusSoon(requester: FocusRequester) {
+    LaunchedEffect(requester) {
+        repeat(5) {
+            if (runCatching { requester.requestFocus() }.isSuccess) return@LaunchedEffect
+            delay(16)
         }
     }
 }

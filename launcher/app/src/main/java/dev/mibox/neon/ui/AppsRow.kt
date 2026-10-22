@@ -77,6 +77,7 @@ import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.data.FavoriteCard
 import dev.mibox.neon.data.WatchItem
 
 /** What has focus in the rows; drives the hero, the backdrop glow and the footer. */
@@ -102,7 +103,7 @@ const val ROW_FOR_YOU = "foryou"
 const val ROW_APPS = "apps"
 
 /** Rows top to bottom; empty ones are left out. */
-fun rowKeys(favorites: List<AppEntry>, watch: List<WatchItem>, forYou: List<WatchItem>): List<String> = buildList {
+fun rowKeys(favorites: List<FavoriteCard>, watch: List<WatchItem>, forYou: List<WatchItem>): List<String> = buildList {
     if (favorites.isNotEmpty()) add(ROW_FAVORITES)
     if (watch.isNotEmpty()) add(ROW_WATCH)
     if (forYou.isNotEmpty()) add(ROW_FOR_YOU)
@@ -153,7 +154,7 @@ private val RowTop = 38.5.dp // idle card bottoms land on the design's y995px
 @Composable
 fun RowsArea(
     vm: LauncherViewModel,
-    favorites: List<AppEntry>,
+    favorites: List<FavoriteCard>,
     apps: List<AppEntry>,
     watch: List<WatchItem>,
     forYou: List<WatchItem>,
@@ -161,6 +162,7 @@ fun RowsArea(
     rows: RowsController,
     focus: MutableState<Focus?>,
     onMenu: (AppEntry) -> Unit,
+    onContentMenu: (WatchItem) -> Unit,
 ) {
     val keys = rowKeys(favorites, watch, forYou)
     val active = keys.indexOf(rows.activeKey).coerceAtLeast(0)
@@ -198,22 +200,25 @@ fun RowsArea(
                     .onFocusChanged { if (it.hasFocus) rows.activeKey = key }
                 when (key) {
                     ROW_FAVORITES -> RowSection("Favoriler", favorites.size, Small) {
-                        AppsRow(
-                            favorites, vm, moving = null, rows.listState(key), rowModifier, spec = Small,
-                            onFocused = { focus.value = Focus.App(it) },
+                        FavoritesRow(
+                            favorites, vm, rows.listState(key), rowModifier,
+                            onFocused = { focus.value = it },
                             onMenu = onMenu,
+                            onContentMenu = onContentMenu,
                         )
                     }
                     ROW_WATCH -> RowSection("İzlemeye devam et", watch.size) {
                         WatchRow(
                             watch, vm, rows.listState(key), rowModifier,
                             onFocused = { item -> focus.value = Focus.Watch(item, vm.appFor(item.pkg)) },
+                            onLongClick = onContentMenu,
                         )
                     }
                     ROW_FOR_YOU -> RowSection("Senin için", forYou.size) {
                         WatchRow(
                             forYou, vm, rows.listState(key), rowModifier,
                             onFocused = { item -> focus.value = Focus.Watch(item, vm.appFor(item.pkg)) },
+                            onLongClick = onContentMenu,
                         )
                     }
                     else -> RowSection("Tüm uygulamalar", apps.size) {
@@ -286,6 +291,51 @@ private fun AppsRow(
     }
 }
 
+/** Pinned apps and pinned content (episodes, videos) in the order they were added. */
+@Composable
+private fun FavoritesRow(
+    cards: List<FavoriteCard>,
+    vm: LauncherViewModel,
+    state: LazyListState,
+    modifier: Modifier,
+    onFocused: (Focus) -> Unit,
+    onMenu: (AppEntry) -> Unit,
+    onContentMenu: (WatchItem) -> Unit,
+) {
+    LazyRow(
+        state = state,
+        modifier = Modifier.cardRow(modifier, Small),
+        contentPadding = PaddingValues(horizontal = 48.dp, vertical = GLOW_PAD.dp),
+        horizontalArrangement = Arrangement.spacedBy(Small.gap),
+    ) {
+        items(cards, key = { it.key }) { card ->
+            when (card) {
+                is FavoriteCard.App -> AppCard(
+                    app = card.app,
+                    index = 0,
+                    moving = false,
+                    vm = vm,
+                    spec = Small,
+                    modifier = Modifier.animateItem(),
+                    onFocused = { onFocused(Focus.App(card.app)) },
+                    onClick = { vm.launchPinned(card) },
+                    onLongClick = { onMenu(card.app) },
+                )
+                is FavoriteCard.Content -> WatchCard(
+                    item = card.item,
+                    vm = vm,
+                    onFocused = { onFocused(Focus.Watch(card.item, card.app)) },
+                    onClick = { vm.launchPinned(card) },
+                    onLongClick = { onContentMenu(card.item) },
+                    modifier = Modifier.animateItem(),
+                    spec = Small,
+                    pinned = card,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun WatchRow(
     items: List<WatchItem>,
@@ -293,6 +343,7 @@ private fun WatchRow(
     state: LazyListState,
     modifier: Modifier,
     onFocused: (WatchItem) -> Unit,
+    onLongClick: (WatchItem) -> Unit,
 ) {
     LazyRow(
         state = state,
@@ -301,7 +352,13 @@ private fun WatchRow(
         horizontalArrangement = Arrangement.spacedBy(CardGap),
     ) {
         items(items, key = { it.id }) { item ->
-            WatchCard(item, vm, onFocused = { onFocused(item) })
+            WatchCard(
+                item = item,
+                vm = vm,
+                onFocused = { onFocused(item) },
+                onClick = { vm.launchWatch(item) },
+                onLongClick = { onLongClick(item) },
+            )
         }
     }
 }
@@ -431,19 +488,34 @@ private fun AppCard(
     }
 }
 
-/** The app's own thumbnail; without one, the app's banner with the title over it. */
+/**
+ * The app's own thumbnail; without one, the app's banner with the title over it. A [pinned]
+ * card (Favoriler) loads its saved poster and falls back to the app banner on its own.
+ */
 @Composable
-private fun WatchCard(item: WatchItem, vm: LauncherViewModel, onFocused: () -> Unit) {
-    val thumb by produceState<AppArt?>(null, item.id, item.imageUri) { value = vm.watchArt(item) }
+private fun WatchCard(
+    item: WatchItem,
+    vm: LauncherViewModel,
+    onFocused: () -> Unit,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    spec: CardSpec = Regular,
+    pinned: FavoriteCard.Content? = null,
+) {
+    val thumb by produceState<AppArt?>(null, item.id, item.imageUri) {
+        value = if (pinned != null) vm.favoriteArt(pinned) else vm.watchArt(item)
+    }
     val app = remember(item.pkg) { vm.appFor(item.pkg) }
     val appArt by produceState<AppArt?>(null, item.pkg) { value = app?.let { vm.art(it) } }
     val t = thumb
     CardFrame(
-        onClick = { vm.launchWatch(item) },
-        onLongClick = null,
+        onClick = onClick,
+        onLongClick = onLongClick,
         color = Neon.Bg3,
         glow = t?.vibrant ?: appArt?.vibrant ?: Neon.Pink,
-        modifier = Modifier,
+        modifier = modifier,
+        spec = spec,
         onFocused = onFocused,
     ) {
         if (t != null) {
@@ -452,10 +524,23 @@ private fun WatchCard(item: WatchItem, vm: LauncherViewModel, onFocused: () -> U
             appArt?.let { Image(it.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.55f) }
             Text(
                 item.title,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, end = 8.dp, bottom = 10.dp),
-                style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White),
+                modifier = Modifier.align(Alignment.BottomStart).padding(start = 8.dp, end = 6.dp, bottom = 8.dp),
+                style = TextStyle(
+                    fontFamily = Poppins,
+                    fontSize = if (spec.h < CardH) 10.sp else 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                ),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Marks pinned content so it reads differently from the pinned apps beside it
+        if (pinned != null) {
+            Text(
+                "★",
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 3.dp, end = 5.dp),
+                style = TextStyle(fontSize = 9.sp, color = Neon.Amber),
             )
         }
         item.progress?.let { p ->

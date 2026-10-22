@@ -32,6 +32,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,6 +40,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.data.Wiz
 import kotlinx.coroutines.launch
 
@@ -141,6 +143,29 @@ fun AppMenu(
             }
             MenuItem("←   Geri", { pickProfile = false })
         }
+    }
+    FocusOnOpen(first)
+}
+
+/**
+ * Long-press on a Watch Next / "Senin için" card or on a pinned content card in Favoriler:
+ * pins the item or takes it off the Favoriler row again.
+ */
+@Composable
+fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, onToggled: () -> Unit) {
+    val keys by vm.pinnedContentKeys.collectAsStateWithLifecycle()
+    val pinned = vm.pinKeyOf(item) in keys
+    val first = remember { FocusRequester() }
+
+    NeonDialog(onDismiss) {
+        Text(item.title, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(4.dp))
+        MenuItem(
+            if (pinned) "⭐   Favorilerden çıkar" else "⭐   Favorilere ekle",
+            { vm.togglePinned(item); onToggled() },
+            Modifier.focusRequester(first),
+        )
+        MenuItem("✕   Kapat", onDismiss)
     }
     FocusOnOpen(first)
 }

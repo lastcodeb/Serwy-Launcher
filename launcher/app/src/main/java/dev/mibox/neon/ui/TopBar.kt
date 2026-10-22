@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +40,7 @@ import dev.mibox.neon.data.SpeedState
 import dev.mibox.neon.data.WeatherNow
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.cos
@@ -57,18 +60,36 @@ fun rememberNow(): State<LocalDateTime> = produceState(LocalDateTime.now()) {
     }
 }
 
-/** Design: y 70–140px → a 35dp row; chips 10dp apart, gear flush with the right margin. */
+/**
+ * Design: y 70–140px → a 35dp row; chips 10dp apart, gear flush with the right margin. The
+ * Galatasaray match chip sits right after the clock; with it present the clock chip uses tighter
+ * paddings and an ellipsized city so the row fits the 864dp between the margins.
+ */
 @Composable
-fun TopBar(vm: LauncherViewModel, onOpenMenu: () -> Unit, onOpenLight: () -> Unit, onOpenControl: () -> Unit) {
+fun TopBar(
+    vm: LauncherViewModel,
+    onOpenMenu: () -> Unit,
+    onOpenLight: () -> Unit,
+    onOpenControl: () -> Unit,
+    onOpenNet: () -> Unit,
+    onOpenMatch: () -> Unit,
+) {
+    val match by vm.match.collectAsStateWithLifecycle()
+    val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
+    // Minute tick: the countdown and the day words re-evaluate here
+    val tick by rememberNow()
+    val nowMs = tick.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     Row(
         Modifier.fillMaxWidth().height(35.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        ClockWeatherChip(vm, onOpenControl)
+        ClockWeatherChip(vm, compact = matchOn, onOpen = onOpenControl)
+        // Always there while match day is on; the simulated state counts as on
+        if (matchOn || match != null) MatchChip(match, nowMs, onOpenMatch)
         Spacer(Modifier.weight(1f))
         LightChip(vm, onOpenLight)
-        SpeedChip(vm)
+        SpeedChip(vm, onOpenNet)
         RamChip(vm)
         NeonSurface(
             onClick = vm::openSystemSettings,
@@ -87,7 +108,7 @@ fun TopBar(vm: LauncherViewModel, onOpenMenu: () -> Unit, onOpenLight: () -> Uni
 }
 
 @Composable
-private fun ClockWeatherChip(vm: LauncherViewModel, onOpen: () -> Unit) {
+private fun ClockWeatherChip(vm: LauncherViewModel, compact: Boolean, onOpen: () -> Unit) {
     val now by rememberNow()
     val weather by vm.weather.collectAsStateWithLifecycle()
     val city by vm.city.collectAsStateWithLifecycle()
@@ -99,18 +120,18 @@ private fun ClockWeatherChip(vm: LauncherViewModel, onOpen: () -> Unit) {
         modifier = Modifier.height(35.dp),
     ) {
         Row(
-            Modifier.fillMaxHeight().padding(start = 16.dp, end = 18.dp),
+            Modifier.fillMaxHeight().padding(start = if (compact) 12.dp else 16.dp, end = if (compact) 12.dp else 18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(now.format(TimeFmt), style = BarText.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold))
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(if (compact) 6.dp else 8.dp))
             Text(
                 now.format(DateFmt).replace(".", ""),
                 style = BarText.copy(fontSize = 12.sp, color = Neon.TextSoft),
             )
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
             Box(Modifier.width(1.dp).height(19.dp).background(Color.White.copy(alpha = 0.15f)))
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(if (compact) 7.dp else 10.dp))
             WeatherIcon(weather, Modifier.size(width = 26.dp, height = 16.dp))
             Spacer(Modifier.width(6.dp))
             Text(
@@ -118,7 +139,13 @@ private fun ClockWeatherChip(vm: LauncherViewModel, onOpen: () -> Unit) {
                 style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold),
             )
             Spacer(Modifier.width(4.dp))
-            Text("· ${city.name}", style = BarText.copy(fontSize = 11.sp, color = Neon.TextDim))
+            Text(
+                "· ${city.name}",
+                modifier = Modifier.widthIn(max = if (compact) 62.dp else 120.dp),
+                style = BarText.copy(fontSize = 11.sp, color = Neon.TextDim),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -144,16 +171,26 @@ private fun LightChip(vm: LauncherViewModel, onOpen: () -> Unit) {
     }
 }
 
+/** OK runs a test; idle, it shows the newest result with a verdict dot. Long-press opens the network panel. */
 @Composable
-private fun SpeedChip(vm: LauncherViewModel) {
+private fun SpeedChip(vm: LauncherViewModel, onOpenNet: () -> Unit) {
     val speed by vm.speed.collectAsStateWithLifecycle()
-    val label = when (val s = speed) {
-        SpeedState.Idle -> "Hız testi"
+    val net by vm.netNow.collectAsStateWithLifecycle()
+    val s = speed
+    val last = net.last
+    val label = when (s) {
+        SpeedState.Idle -> last?.let { "${fmt(it.mbps)} Mbps" } ?: "Hız testi"
         is SpeedState.Running -> if (s.mbps == 0.0) "Ölçülüyor…" else "${fmt(s.mbps)} Mbps"
         is SpeedState.Done -> "${fmt(s.mbps)} Mbps"
         SpeedState.Failed -> "Bağlantı yok"
     }
-    Chip(label, onClick = vm::runSpeedTest)
+    val showDot = s !is SpeedState.Running && s != SpeedState.Failed && last != null
+    val dot: @Composable (() -> Unit)? = if (showDot) {
+        { Box(Modifier.size(7.dp).background(verdictColor(net.verdict), CircleShape)) }
+    } else {
+        null
+    }
+    Chip(label, onClick = vm::runSpeedTest, onLongClick = onOpenNet, trailing = dot)
 }
 
 /** "CPU %66 ● [⚡ Boşalt]" in the design; RAM is what the box actually runs short of. */

@@ -3,6 +3,7 @@ package dev.mibox.neon.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,8 +44,17 @@ private val LongDate = DateTimeFormatter.ofPattern("d MMMM EEEE", TR)
 
 /** Opened from the clock chip: time and weather large on the left, light and system on the right. */
 @Composable
-fun ControlCenter(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenLight: () -> Unit, onOpenMenu: () -> Unit) {
+fun ControlCenter(
+    vm: LauncherViewModel,
+    onDismiss: () -> Unit,
+    onOpenLight: () -> Unit,
+    onOpenMenu: () -> Unit,
+    onOpenNet: () -> Unit,
+    onOpenWrapped: () -> Unit,
+    onOpenMatch: () -> Unit,
+) {
     val hidden by vm.hiddenApps.collectAsStateWithLifecycle()
+    val wrappedBadge by vm.wrappedBadge.collectAsStateWithLifecycle()
     val now by rememberNow()
     val weather by vm.weather.collectAsStateWithLifecycle()
     val city by vm.city.collectAsStateWithLifecycle()
@@ -131,6 +142,24 @@ fun ControlCenter(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenLight: () 
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Chip("Gizli uygulamalar (${hidden.size}) · Şehir", onClick = onOpenMenu, leading = "👁")
+                }
+
+                Spacer(Modifier.height(4.dp))
+                Section("Keşfet", null)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Chip("Ağ durumu", onClick = onOpenNet, leading = "📡")
+                    Chip(
+                        "Neon Wrapped",
+                        onClick = onOpenWrapped,
+                        leading = "✨",
+                        // Unseen summary of last month
+                        trailing = if (wrappedBadge) {
+                            { Box(Modifier.size(7.dp).background(Neon.Pink, CircleShape)) }
+                        } else {
+                            null
+                        },
+                    )
+                    Chip("Maç günü", onClick = onOpenMatch, leading = "⚽")
                 }
             }
         }

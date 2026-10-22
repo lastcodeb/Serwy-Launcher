@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
 
-private fun httpGet(url: String): String {
+internal fun httpGet(url: String): String {
     val conn = URL(url).openConnection() as HttpURLConnection
     conn.connectTimeout = 6000
     conn.readTimeout = 6000
@@ -80,11 +80,20 @@ object Weather {
 
 object SpeedTest {
     private const val DOWNLOAD_URL = "https://speed.cloudflare.com/__down?bytes=50000000"
-    private const val MAX_NANOS = 8_000_000_000L
+    private const val FULL_MS = 8_000L
     private const val REPORT_NANOS = 250_000_000L
 
-    /** Downloads for up to 8 s and returns the average Mbps, reporting progress along the way. */
-    suspend fun run(onProgress: (Double) -> Unit): Double = withContext(Dispatchers.IO) {
+    /** Runs shorter than this skip the first [WARMUP_NANOS]: TCP slow start would understate the line. */
+    private const val SHORT_MS = 5_000L
+    private const val WARMUP_NANOS = 600_000_000L
+
+    /**
+     * Downloads for up to [durationMs] and returns the average Mbps, reporting progress along the
+     * way. Short runs (the silent background probe) leave out the ramp-up second.
+     */
+    suspend fun run(durationMs: Long = FULL_MS, onProgress: (Double) -> Unit = {}): Double = withContext(Dispatchers.IO) {
+        val maxNanos = durationMs * 1_000_000L
+        val warmup = if (durationMs < SHORT_MS) WARMUP_NANOS else 0L
         val conn = URL(DOWNLOAD_URL).openConnection() as HttpURLConnection
         conn.connectTimeout = 5000
         conn.readTimeout = 5000
@@ -94,24 +103,55 @@ object SpeedTest {
                 val start = System.nanoTime()
                 var lastReport = start
                 var bytes = 0L
+                var warmAt = start
+                var warmBytes = 0L
+                var warmed = warmup == 0L
                 while (true) {
                     ensureActive()
                     val n = input.read(buf)
                     if (n < 0) break
                     bytes += n
                     val now = System.nanoTime()
+                    if (!warmed && now - start >= warmup) {
+                        warmed = true
+                        warmAt = now
+                        warmBytes = bytes
+                    }
                     if (now - lastReport > REPORT_NANOS) {
-                        onProgress(mbps(bytes, now - start))
+                        onProgress(mbps(bytes - warmBytes, now - warmAt))
                         lastReport = now
                     }
-                    if (now - start > MAX_NANOS) break
+                    if (now - start > maxNanos) break
                 }
-                mbps(bytes, System.nanoTime() - start)
+                mbps(bytes - warmBytes, System.nanoTime() - warmAt)
             }
         } finally {
             conn.disconnect()
         }
     }
 
-    private fun mbps(bytes: Long, nanos: Long) = bytes * 8.0 / (nanos / 1e9) / 1e6
+    private fun mbps(bytes: Long, nanos: Long) = if (nanos <= 0) 0.0 else bytes * 8.0 / (nanos / 1e9) / 1e6
+}
+
+/** Round-trip time to Cloudflare's edge: a tiny HTTPS request, so it also shows the DNS/TLS path is alive. */
+object Latency {
+    private const val URL_204 = "https://cp.cloudflare.com/generate_204"
+
+    /** Milliseconds, or null when offline. The first request warms the connection and is not counted. */
+    fun probe(): Int? = runCatching {
+        var best = Long.MAX_VALUE
+        repeat(3) { i ->
+            val conn = URL(URL_204).openConnection() as HttpURLConnection
+            conn.connectTimeout = 3000
+            conn.readTimeout = 3000
+            conn.useCaches = false
+            val t0 = System.nanoTime()
+            val code = conn.responseCode
+            conn.inputStream.close() // fully drained 204: keeps the connection alive for the next try
+            val dt = System.nanoTime() - t0
+            if (code !in 200..299) throw IOException("HTTP $code")
+            if (i > 0) best = minOf(best, dt)
+        }
+        (best / 1_000_000L).toInt().coerceAtLeast(1)
+    }.getOrNull()
 }

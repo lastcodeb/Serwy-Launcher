@@ -27,8 +27,48 @@ class AppArt(
     val vibrant: Color,
 )
 
+/** Why the idle hero shows this app. */
+enum class HeroReason {
+    /** Usage history says this is what is usually opened at this hour ("Genelde bu saatte"). */
+    Predicted,
+
+    /** The app used last. */
+    Resume,
+
+    /** Nothing better known: the first app of the row. */
+    Default,
+}
+
 @Immutable
-data class HeroState(val app: AppEntry, val resume: Boolean)
+data class HeroState(val app: AppEntry, val reason: HeroReason) {
+    val resume: Boolean get() = reason == HeroReason.Resume
+}
+
+enum class PinResult { Added, Removed, Full }
+
+/** A Watch Next / "Senin için" item the user pinned to the Favoriler row. */
+@Immutable
+data class PinnedContent(val key: String, val item: WatchItem)
+
+/** One card of the Favoriler row: a pinned app, or a pinned piece of content (episode, video…). */
+sealed interface FavoriteCard {
+    /** Stable Compose key. */
+    val key: String
+
+    /** The app that owns the card; its banner is the fallback art. */
+    val app: AppEntry
+
+    @Immutable
+    data class App(override val app: AppEntry) : FavoriteCard {
+        override val key: String get() = "a:${app.pkg}"
+    }
+
+    /** [item] is a copy of the original WatchItem; its [WatchItem.id] is a stable negative number. */
+    @Immutable
+    data class Content(override val app: AppEntry, val item: WatchItem, val pinKey: String) : FavoriteCard {
+        override val key: String get() = "c:$pinKey"
+    }
+}
 
 @Immutable
 data class Ram(val total: Long, val avail: Long) {

@@ -4,6 +4,11 @@
 
     <!-- Weather (Open-Meteo) and speed test -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Network card: ethernet vs Wi-Fi, Wi-Fi signal and link speed (no location needed) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- Exact match-day alarms on Android 12+ (Android 11 needs nothing); falls back to inexact when denied -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- "Boşalt" button: ActivityManager.killBackgroundProcesses -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <!-- Last used app for the hero; granted via adb appops -->
@@ -67,6 +72,11 @@
         <!-- WiZ sleep timer: woken by AlarmManager, does a few UDP sends and exits -->
         <receiver
             android:name=".SleepReceiver"
+            android:exported="false" />
+
+        <!-- Galatasaray match day: alarm-driven score polling and light effects -->
+        <receiver
+            android:name=".MatchReceiver"
             android:exported="false" />
     </application>
 </manifest>

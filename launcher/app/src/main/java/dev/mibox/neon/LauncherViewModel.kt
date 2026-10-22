@@ -19,12 +19,35 @@ import dev.mibox.neon.data.AppEntry
 import dev.mibox.neon.data.AppRepository
 import dev.mibox.neon.data.City
 import dev.mibox.neon.data.DefaultCity
+import dev.mibox.neon.data.FavoriteCard
+import dev.mibox.neon.data.Fixture
+import dev.mibox.neon.data.HeroReason
 import dev.mibox.neon.data.HeroState
+import dev.mibox.neon.data.Latency
+import dev.mibox.neon.data.LinkInfo
+import dev.mibox.neon.data.LinkType
+import dev.mibox.neon.data.MatchBridge
+import dev.mibox.neon.data.MatchConfig
+import dev.mibox.neon.data.MatchEffectKind
+import dev.mibox.neon.data.MatchEffects
+import dev.mibox.neon.data.MatchPhase
+import dev.mibox.neon.data.MatchSource
+import dev.mibox.neon.data.MatchState
+import dev.mibox.neon.data.MatchStore
+import dev.mibox.neon.data.NetHealth
+import dev.mibox.neon.data.NetNow
+import dev.mibox.neon.data.NetWarning
+import dev.mibox.neon.data.PinResult
 import dev.mibox.neon.data.Prefs
 import dev.mibox.neon.data.Ram
+import dev.mibox.neon.data.SpeedResult
 import dev.mibox.neon.data.SpeedState
 import dev.mibox.neon.data.SpeedTest
 import dev.mibox.neon.data.SystemStats
+import dev.mibox.neon.data.UsageHistory
+import dev.mibox.neon.data.WrappedSummary
+import dev.mibox.neon.data.pinKey
+import dev.mibox.neon.data.stablePinId
 import dev.mibox.neon.data.Weather
 import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.data.WatchNext
@@ -47,18 +70,25 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
+import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Collections
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = AppRepository(app)
     private val prefs = Prefs(app)
     private val stats = SystemStats(app)
+    private val usage = UsageHistory(app)
+    private val matchStore = MatchStore(app)
 
     private val installed = MutableStateFlow<List<AppEntry>?>(null)
     private val draftOrder = MutableStateFlow<List<String>?>(null)
@@ -94,10 +124,19 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         combine(installed.filterNotNull(), prefs.hidden) { list, hidden -> list.filter { it.pkg in hidden } }
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** App the usage history expects at this hour; null without a confident prediction. */
+    private val predictedPkg = MutableStateFlow<String?>(null)
+
+    /**
+     * What the hero shows when nothing is focused: the predicted app (reason [HeroReason.Predicted])
+     * when the history is confident, else the app used last, else the first app of the row.
+     */
     val hero: StateFlow<HeroState?> =
-        combine(installed.filterNotNull(), lastUsedPkg, apps) { list, last, visible ->
-            list.firstOrNull { it.pkg == last }?.let { HeroState(it, resume = true) }
-                ?: visible.firstOrNull { it.pkg !in repo.homePackages() }?.let { HeroState(it, resume = false) }
+        combine(installed.filterNotNull(), lastUsedPkg, apps, predictedPkg) { list, last, visible, predicted ->
+            val homes = repo.homePackages()
+            visible.firstOrNull { it.pkg == predicted && it.pkg !in homes }?.let { HeroState(it, HeroReason.Predicted) }
+                ?: list.firstOrNull { it.pkg == last }?.let { HeroState(it, HeroReason.Resume) }
+                ?: visible.firstOrNull { it.pkg !in homes }?.let { HeroState(it, HeroReason.Default) }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private var weatherAt = 0L
@@ -156,12 +195,341 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             pinned.mapNotNull(byPkg::get)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    // --- Favoriler row: pinned apps and pinned content, in the order they were added --------------
+    /**
+     * The mixed Favoriler row. Pins whose app was uninstalled are left out (not deleted, so an app
+     * update that briefly removes the package doesn't lose them).
+     */
+    val favoriteCards: StateFlow<List<FavoriteCard>> =
+        combine(installed.filterNotNull(), prefs.showcase, prefs.pinnedContent, prefs.favoriteOrder) { list, apps, content, order ->
+            val byPkg = list.associateBy { it.pkg }
+            val cards = apps.mapNotNull { byPkg[it]?.let { a -> FavoriteCard.App(a) } } +
+                content.mapNotNull { c -> byPkg[c.item.pkg]?.let { a -> FavoriteCard.Content(a, c.item, c.key) } }
+            val rank = HashMap<String, Int>(order.size).apply { order.forEachIndexed { i, t -> put(t, i) } }
+            // Stable sort: apps pinned before content pins existed have no token and stay first
+            cards.sortedBy { rank[it.key] ?: -1 }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Pin keys ([pinKeyOf]) of the pinned content, for showing "already pinned" in a menu. */
+    val pinnedContentKeys: StateFlow<Set<String>> =
+        prefs.pinnedContent.map { l -> l.mapTo(HashSet<String>()) { it.key } as Set<String> }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    private val _pinResult = MutableSharedFlow<PinResult>(extraBufferCapacity = 1)
+    /** Outcome of the last [togglePinned]: Added, Removed, or Full (12 content pins). */
+    val pinResult: SharedFlow<PinResult> = _pinResult
+
+    fun pinKeyOf(item: WatchItem): String = item.pinKey()
+
+    fun isPinned(item: WatchItem): Boolean = item.pinKey() in pinnedContentKeys.value
+
+    /**
+     * Long-press action on a Watch Next / "Senin için" card: pins the item to Favoriler, or unpins
+     * it. The poster is copied into filesDir so it survives the source URI expiring.
+     */
+    fun togglePinned(item: WatchItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val key = item.pinKey()
+            if (key in pinnedContentKeys.value) {
+                prefs.togglePinnedContent(key, item, PIN_MAX, emptySet())
+                posterFile(key).delete()
+                _pinResult.tryEmit(PinResult.Removed)
+                return@launch
+            }
+            val installedPkgs = installed.value.orEmpty().mapTo(HashSet()) { it.pkg }
+            val local = savePoster(key, item.imageUri)
+            val stored = item.copy(id = stablePinId(key), imageUri = local ?: item.imageUri, progress = null)
+            val result = prefs.togglePinnedContent(key, stored, PIN_MAX, installedPkgs)
+            if (result != PinResult.Added) posterFile(key).delete()
+            _pinResult.tryEmit(result)
+        }
+    }
+
+    private fun posterFile(key: String) = File(File(getApplication<Application>().filesDir, "pins"), "$key.img")
+
+    /** Copies the poster bytes (max 2 MB) into the app's data; returns a file:// URI or null. */
+    private fun savePoster(key: String, uri: String?): String? {
+        if (uri == null) return null
+        val bytes = WatchNext.readBytes(getApplication(), uri)?.takeIf { it.size in 1..POSTER_MAX_BYTES } ?: return null
+        return runCatching {
+            val f = posterFile(key)
+            f.parentFile?.mkdirs()
+            f.writeBytes(bytes)
+            f.toURI().toString()
+        }.getOrNull()
+    }
+
+    /** Opens a Favoriler card: an app normally, or straight into the pinned episode / video. */
+    fun launchPinned(card: FavoriteCard) {
+        when (card) {
+            is FavoriteCard.App -> launch(card.app)
+            is FavoriteCard.Content -> launchWatch(card.item)
+        }
+    }
+
+    /**
+     * Art for a pinned content card: its saved poster, or the app's own banner when the poster can
+     * no longer be loaded.
+     */
+    suspend fun favoriteArt(card: FavoriteCard.Content): AppArt? = repo.watchArt(card.item) ?: repo.art(card.app)
+
     private val _watchLoaded = MutableStateFlow(false)
     /** True once the first Watch Next query finished, so initial focus can pick the right row. */
     val watchLoaded: StateFlow<Boolean> = _watchLoaded.asStateFlow()
 
     private val _lastInput = MutableStateFlow(System.currentTimeMillis())
     val lastInput: StateFlow<Long> = _lastInput.asStateFlow()
+
+    // --- Ticker: everything that updates while the home screen is visible ----------------------
+    /** Wall clock, set on resume and every ticker round; derived flows (verdict age, match card…) re-evaluate on it. */
+    private val _clock = MutableStateFlow(System.currentTimeMillis())
+    private var tickJob: Job? = null
+    private var probeJob: Job? = null
+    private var usageJob: Job? = null
+    private var lastPredictAt = 0L
+    private var lastLatencyAt = 0L
+    private var lastMatchLiveAt = 0L
+    private var lastProbeTry = 0L
+
+    /** Runs only between onResumed and onPaused, so nothing here touches the network in the background. */
+    private fun startTicker() {
+        tickJob?.cancel()
+        tickJob = viewModelScope.launch {
+            while (true) {
+                delay(TICK_MS)
+                val now = System.currentTimeMillis()
+                _clock.value = now
+                refreshNet(latency = now - lastLatencyAt >= LATENCY_EVERY_MS)
+                maybeAutoProbe(now)
+                if (now - lastMatchLiveAt >= MATCH_LIVE_EVERY_MS) refreshMatchLive()
+                if (now - lastPredictAt >= PREDICT_EVERY_MS) refreshPrediction()
+            }
+        }
+    }
+
+    // --- Network health ---------------------------------------------------------------------
+    private val _link = MutableStateFlow(LinkInfo(LinkType.NONE, null, null))
+    private val _latency = MutableStateFlow<Int?>(null)
+
+    /** The last 30 speed tests (manual and automatic), oldest first. */
+    val netHistory: StateFlow<List<SpeedResult>> = prefs.speedHistory.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Connection type, Wi-Fi signal, link speed, latency, newest result and the streaming verdict. */
+    val netNow: StateFlow<NetNow> =
+        combine(_link, _latency, netHistory, _clock) { link, latency, history, now ->
+            NetNow(
+                link = link.type,
+                rssiDbm = link.rssiDbm,
+                signalBars = link.signalBars,
+                linkMbps = link.linkMbps,
+                latencyMs = latency,
+                last = history.lastOrNull(),
+                verdict = NetHealth.verdict(history, now),
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, NetNow(LinkType.NONE, null, null, null, null, null, NetHealth.verdict(emptyList(), 0L)))
+
+    private val _netWarning = MutableSharedFlow<NetWarning>(extraBufferCapacity = 1)
+    /**
+     * One-shot, emitted when a streaming app is launched while the newest result (at most 3 h old)
+     * is under 25 Mbps. The launch itself is never delayed; show a Toast.
+     */
+    val netWarning: SharedFlow<NetWarning> = _netWarning
+
+    private fun warnIfSlow(pkg: String, label: String) {
+        if (pkg !in NetHealth.StreamingPackages) return
+        val r = NetHealth.fresh(netHistory.value, System.currentTimeMillis()) ?: return
+        if (r.mbps < NetHealth.UHD_MBPS) _netWarning.tryEmit(NetWarning(label, r.mbps))
+    }
+
+    /** Re-reads the link (cheap); with [latency] also pings Cloudflare. The UI may call it when a network card opens. */
+    fun refreshNet(latency: Boolean = false) {
+        if (latency) lastLatencyAt = System.currentTimeMillis()
+        viewModelScope.launch(Dispatchers.IO) {
+            val link = NetHealth.link(getApplication())
+            _link.value = link
+            if (latency) _latency.value = if (link.type == LinkType.NONE) null else Latency.probe()
+        }
+    }
+
+    /** Quiet 3 s test when home is visible, the user has been idle for a minute and the newest result is over an hour old. */
+    private fun maybeAutoProbe(now: Long) {
+        if (probeJob?.isActive == true || _speed.value is SpeedState.Running) return
+        if (now - _lastInput.value < PROBE_IDLE_MS || now - lastProbeTry < PROBE_RETRY_MS) return
+        if (_link.value.type == LinkType.NONE) return
+        val last = netHistory.value.lastOrNull()
+        if (last != null && now - last.at < NetHealth.AUTO_STALE_MS) return
+        lastProbeTry = now
+        // No WiZ gauge and no _speed updates: the user never sees this one
+        probeJob = viewModelScope.launch {
+            try {
+                val mbps = SpeedTest.run(PROBE_MS)
+                if (mbps > 0.0) prefs.addSpeedResult(SpeedResult(System.currentTimeMillis(), mbps, auto = true))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.i(TAG, "background speed probe failed: $e")
+            }
+        }
+    }
+
+    // --- Usage history: time-aware hero and Neon Wrapped --------------------------------------
+    private val _usageAccess = MutableStateFlow(true)
+    /** False when the usage-stats appop is missing (the hero, prediction and Wrapped then stay empty). */
+    val usageAccess: StateFlow<Boolean> = _usageAccess.asStateFlow()
+
+    private val _wrappedMonths = MutableStateFlow<List<YearMonth>>(emptyList())
+    /** Months with data, newest first (the running month included). */
+    val wrappedAvailableMonths: StateFlow<List<YearMonth>> = _wrappedMonths.asStateFlow()
+
+    /**
+     * True during the first 3 days of a month while last month has data and its summary has not
+     * been opened. Opening it through [wrapped] clears the badge.
+     */
+    val wrappedBadge: StateFlow<Boolean> =
+        combine(_wrappedMonths, prefs.wrappedSeen, _clock) { months, seen, now ->
+            val today = java.time.Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+            if (today.dayOfMonth > 3) {
+                false
+            } else {
+                val prev = YearMonth.from(today).minusMonths(1)
+                prev in months && seen != prev.toString()
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Ingests new usage events, then refreshes the prediction and the Wrapped month list. */
+    private fun refreshUsage() {
+        if (usageJob?.isActive == true) return
+        usageJob = viewModelScope.launch(Dispatchers.IO) {
+            val list = installed.filterNotNull().first()
+            _usageAccess.value = usage.hasAccess()
+            val excluded = repo.homePackages() + getApplication<Application>().packageName + UsageHistory.AlwaysExcluded
+            runCatching { usage.ingest(list.mapTo(HashSet()) { it.pkg }, excluded) }
+                .onSuccess { Log.i(TAG, "usage ingest: new sessions=$it") }
+                .onFailure { Log.w(TAG, "usage ingest failed", it) }
+            refreshPrediction()
+            _wrappedMonths.value = runCatching { usage.months() }.getOrDefault(emptyList())
+            Log.i(TAG, "usage: access=${_usageAccess.value}, months=${_wrappedMonths.value}")
+        }
+    }
+
+    private fun refreshPrediction() {
+        lastPredictAt = System.currentTimeMillis()
+        val allowed = installed.value?.mapTo(HashSet()) { it.pkg } ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            predictedPkg.value = runCatching { usage.predict(System.currentTimeMillis(), allowed) }.getOrNull()
+            Log.i(TAG, "predicted hero: ${predictedPkg.value}")
+        }
+    }
+
+    /**
+     * The summary of [month], or null without data (no usage access, or a month the system and the
+     * history never saw). Opening last month's summary clears [wrappedBadge].
+     */
+    suspend fun wrapped(month: YearMonth): WrappedSummary? {
+        val s = usage.wrapped(month) { pkg -> installed.value?.firstOrNull { it.pkg == pkg }?.label ?: pkg.substringAfterLast('.') }
+        if (s != null && month == YearMonth.now().minusMonths(1)) prefs.setWrappedSeen(month.toString())
+        return s
+    }
+
+    // --- Galatasaray match day ----------------------------------------------------------------
+    private val _fixtures = MutableStateFlow<List<Fixture>>(emptyList())
+    private val _matchSim = MutableStateFlow<MatchState?>(null)
+
+    val matchEnabled: StateFlow<Boolean> = prefs.matchEnabled.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    /** Seconds the light effects wait after the API reports an event; one of [MatchConfig.DelayOptions]. */
+    val matchDelay: StateFlow<Int> = prefs.matchDelay.stateIn(viewModelScope, SharingStarted.Eagerly, MatchConfig.DEFAULT_DELAY_S)
+    /** Light effects for goals and a win (the kickoff flash only needs [matchEnabled]). */
+    val matchGoalEffect: StateFlow<Boolean> = prefs.matchGoalEffect.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    /** Package of the app matches are watched in, or null. */
+    val matchApp: StateFlow<String?> = prefs.matchApp.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * What the match card shows: the live match, else a result from the last ~12 h, else the next
+     * fixture; null when disabled or nothing is known. A [simulateMatch] state wins over all of it.
+     */
+    val match: StateFlow<MatchState?> =
+        combine(_fixtures, _matchSim, matchEnabled, _clock) { fixtures, sim, enabled, now ->
+            sim ?: if (enabled) MatchSource.stateOf(fixtures, now) else null
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    fun setMatchEnabled(on: Boolean) {
+        viewModelScope.launch {
+            prefs.setMatchEnabled(on)
+            if (on) refreshMatch(force = true) else withContext(Dispatchers.IO) { MatchAlarms.cancel(getApplication()) }
+        }
+    }
+
+    fun setMatchDelay(seconds: Int) {
+        viewModelScope.launch { prefs.setMatchDelay(seconds) }
+    }
+
+    fun setMatchGoalEffect(on: Boolean) {
+        viewModelScope.launch { prefs.setMatchGoalEffect(on) }
+    }
+
+    fun setMatchApp(pkg: String?) {
+        viewModelScope.launch { prefs.setMatchApp(pkg) }
+    }
+
+    /** Opens the match app (with the usual light profile and 4K check). False when none is set or installed. */
+    fun launchMatchApp(): Boolean {
+        val app = matchApp.value?.let(::appFor) ?: return false
+        launch(app)
+        return true
+    }
+
+    /** Plays the goal strobe now (through the light mutex; a light that is off stays off). */
+    fun testGoalEffect() = playMatchEffect(MatchEffectKind.GOAL)
+
+    /** Plays any of the match effects now. */
+    fun testMatchEffect(kind: MatchEffectKind) = playMatchEffect(kind)
+
+    /** Shows [state] on the match card regardless of the real fixtures; null returns to the real data. */
+    fun simulateMatch(state: MatchState?) {
+        _matchSim.value = state
+    }
+
+    private fun playMatchEffect(kind: MatchEffectKind) = wizEffect { ip -> MatchEffects.play(kind) { Wiz.set(ip, it) } }
+
+    private fun refreshMatch(force: Boolean = false) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            if (!prefs.matchEnabled.first()) {
+                MatchAlarms.cancel(app)
+                return@launch
+            }
+            val cached = matchStore.fixtures()
+            if (cached.isNotEmpty()) _fixtures.value = cached
+            val now = System.currentTimeMillis()
+            if (force || cached.isEmpty() || now - matchStore.fetchedAt() >= MatchConfig.FIXTURES_TTL_MS) {
+                runCatching { MatchSource.fixtures() }
+                    .onSuccess {
+                        matchStore.saveFixtures(it, now)
+                        _fixtures.value = matchStore.fixtures()
+                    }
+                    .onFailure { Log.w(TAG, "fixtures unavailable", it) }
+            }
+            Log.i(TAG, "match: ${_fixtures.value.size} fixtures, card=${match.value}")
+            // Idempotent: a chain that is already ticking is left alone
+            MatchAlarms.arm(app, _fixtures.value)
+        }
+    }
+
+    /** While a match is on, folds the newest score into the card (the alarm chain does its own polling). */
+    private fun refreshMatchLive() {
+        val now = System.currentTimeMillis()
+        lastMatchLiveAt = now
+        viewModelScope.launch(Dispatchers.IO) {
+            val stored = matchStore.fixtures()
+            if (stored.isNotEmpty()) _fixtures.value = stored
+            val fx = _fixtures.value.filter { it.phase == MatchPhase.PRE || it.phase == MatchPhase.LIVE }
+                .minByOrNull { it.kickoffMs } ?: return@launch
+            if (now !in (fx.kickoffMs - 10 * 60_000L)..(fx.kickoffMs + MatchConfig.WINDOW_MS)) return@launch
+            val snap = runCatching { MatchSource.live(fx.slug, fx.eventId, fx.kickoffMs) }.getOrNull() ?: return@launch
+            matchStore.applySnapshot(fx.eventId, snap)
+            _fixtures.value = matchStore.fixtures()
+        }
+    }
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -202,6 +570,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        MatchBridge.sink = null
         getApplication<Application>().unregisterReceiver(packageReceiver)
     }
 
@@ -210,6 +579,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun launch(app: AppEntry) {
         prepareLaunch(app.pkg, app)
+        warnIfSlow(app.pkg, app.label)
         repo.launch(app)
     }
 
@@ -244,15 +614,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onResumed() {
         resumed = true
+        _clock.value = System.currentTimeMillis()
         refreshRam()
         refreshLastUsed()
         refreshWatchNext()
         refreshWeather()
         wizEnterHome()
+        refreshUsage()
+        refreshNet(latency = true)
+        refreshMatch()
+        MatchBridge.sink = ::playMatchEffect
+        startTicker()
     }
 
     fun onPaused() {
         resumed = false
+        tickJob?.cancel()
+        probeJob?.cancel()
+        MatchBridge.sink = null
         wizLeaveHome()
     }
 
@@ -502,6 +881,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             }
             _speed.value = runCatching { SpeedTest.run { _speed.value = SpeedState.Running(it) } }
                 .fold({ SpeedState.Done(it) }, { SpeedState.Failed })
+            (_speed.value as? SpeedState.Done)?.takeIf { it.mbps > 0.0 }?.let {
+                prefs.addSpeedResult(SpeedResult(System.currentTimeMillis(), it.mbps, auto = false))
+            }
         }
     }
 
@@ -614,6 +996,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun launchWatch(item: WatchItem) {
         val app = appFor(item.pkg)
         prepareLaunch(item.pkg, app)
+        warnIfSlow(item.pkg, app?.label ?: item.pkg)
         if (!repo.launchWatch(item)) app?.let(repo::launch)
     }
 
@@ -625,6 +1008,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private companion object {
+        const val PIN_MAX = 12
+        const val POSTER_MAX_BYTES = 2 * 1024 * 1024
+        const val TICK_MS = 15_000L
+        const val PREDICT_EVERY_MS = 15L * 60 * 1000
+        const val LATENCY_EVERY_MS = 5L * 60 * 1000
+        const val MATCH_LIVE_EVERY_MS = 60_000L
+        const val PROBE_IDLE_MS = 60_000L
+        const val PROBE_RETRY_MS = 5L * 60 * 1000
+        const val PROBE_MS = 3_000L
         const val WEATHER_TTL_MS = 30L * 60 * 1000
         const val FLASH_MS = 900L
         const val SHOWCASE_SIZE = 5
