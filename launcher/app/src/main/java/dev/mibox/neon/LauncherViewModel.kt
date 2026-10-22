@@ -517,7 +517,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val cached = matchStore.fixtures()
             if (cached.isNotEmpty()) _fixtures.value = cached
             val now = System.currentTimeMillis()
-            if (force || cached.isEmpty() || now - matchStore.fetchedAt() >= MatchConfig.FIXTURES_TTL_MS) {
+            // Caches written before crests existed have no opponent id: refetch them once
+            val stale = cached.any { it.opponentId.isBlank() }
+            if (force || stale || cached.isEmpty() || now - matchStore.fetchedAt() >= MatchConfig.FIXTURES_TTL_MS) {
                 runCatching { MatchSource.fixtures() }
                     .onSuccess {
                         matchStore.saveFixtures(it, now)
@@ -1167,6 +1169,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     suspend fun watchArt(item: WatchItem): AppArt? = repo.watchArt(item)
+    suspend fun largeArt(item: WatchItem): ImageBitmap? = repo.largeArt(item)
+    suspend fun largeArt(app: AppEntry): ImageBitmap? = repo.largeArt(app)
 
     /**
      * Called when home is no longer visible: give memory back to the app being watched. The rows

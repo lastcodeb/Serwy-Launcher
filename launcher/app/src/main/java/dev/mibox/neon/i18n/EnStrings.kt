@@ -141,6 +141,7 @@ internal val EN: Map<String, String> = mapOf(
 
     // Rows
     "Favoriler" to "Favorites",
+    "Favorilerin" to "Your favorites",
     "İzlemeye devam et" to "Continue watching",
     "Senin için" to "For you",
     "Tüm uygulamalar" to "All apps",
@@ -405,6 +406,8 @@ internal val EN: Map<String, String> = mapOf(
     "Renkli, parlak, cam gibi" to "Colorful, bright, glassy",
     "Manşet ve sütunlarla gazete sayfası" to "A newspaper page with headlines and columns",
     "90'lar teletekst sayfası" to "A '90s teletext page",
+    "Cam" to "Glass",
+    "Buzlu cam ve sinema gibi büyük görseller" to "Frosted glass and big, cinematic artwork",
     "Gazete baskısı" to "Newspaper edition",
     "Otomatik (gün batımına göre)" to "Automatic (by sunset)",
     "Gündüz" to "Day",

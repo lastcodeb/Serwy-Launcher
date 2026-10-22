@@ -48,16 +48,18 @@ private fun nameOf(t: HomeTheme) = when (t) {
     HomeTheme.NEON -> "Neon"
     HomeTheme.GAZETE -> t("Gazete")
     HomeTheme.TELETEXT -> "Teletext"
+    HomeTheme.GLASS -> t("Cam")
 }
 
 private fun blurbOf(t: HomeTheme) = when (t) {
     HomeTheme.NEON -> t("Renkli, parlak, cam gibi")
     HomeTheme.GAZETE -> t("Manşet ve sütunlarla gazete sayfası")
     HomeTheme.TELETEXT -> t("90'lar teletekst sayfası")
+    HomeTheme.GLASS -> t("Buzlu cam ve sinema gibi büyük görseller")
 }
 
 /**
- * "Tema": Neon, Gazete, Teletext, each with a small drawn preview. Choosing applies at once (the
+ * "Tema": Neon, Gazete, Teletext, Cam, each with a small drawn preview. Choosing applies at once (the
  * dialog itself re-skins); Gazete also offers its edition. Back closes; Home is handled by
  * LauncherScreen. The picker is drawn in the active theme like every other overlay.
  */
@@ -77,7 +79,7 @@ fun ThemePicker(vm: LauncherViewModel, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .ignoreOpeningPress()
-                .width(640.dp)
+                .width(820.dp)
                 .panel(st)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -152,6 +154,7 @@ private fun ThemeOption(
                 HomeTheme.NEON -> NeonPreview()
                 HomeTheme.GAZETE -> GazetePreview(gazeteNight)
                 HomeTheme.TELETEXT -> TeletextPreview()
+                HomeTheme.GLASS -> GlassPreview()
             }
             Text(
                 st.mark(selected) + nameOf(theme),
@@ -283,6 +286,47 @@ private fun TeletextPreview() {
         }
         Row(Modifier.fillMaxWidth().height(8.dp)) {
             listOf(t.Red, t.Green, t.Yellow, t.Blue).forEach { Box(Modifier.weight(1f).fillMaxSize().background(it)) }
+        }
+    }
+}
+
+@Composable
+private fun GlassPreview() {
+    val sans = androidx.compose.ui.text.font.FontFamily.SansSerif
+    Box(
+        Modifier
+            .size(PreviewW, PreviewH)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF2B2A7A), Color(0xFF0E5E7E), Color(0xFF0B0D12)))),
+    ) {
+        // Artwork top right, title, a frosted shelf of tiles
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 10.dp, end = 8.dp)
+                .size(width = 58.dp, height = 33.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFFFF9F6B), Color(0xFFE0457B)))),
+        )
+        Text(
+            "Netflix",
+            modifier = Modifier.padding(start = 8.dp, top = 22.dp),
+            style = TextStyle(fontFamily = sans, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White),
+        )
+        Row(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 5.dp, vertical = 5.dp)
+                .fillMaxWidth()
+                .height(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.White.copy(alpha = 0.16f))
+                .padding(horizontal = 5.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            listOf(Color.White, Color(0xFFE50914), Color(0xFF1DB954), Color(0xFF0A84FF), Color(0xFFFFD60A)).forEachIndexed { i, c ->
+                Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(3.dp)).background(if (i == 0) c else c.copy(alpha = 0.8f)))
+            }
         }
     }
 }

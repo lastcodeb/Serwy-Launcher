@@ -78,8 +78,9 @@ fun NeonSurface(
     // keeps the node, and with it the focus.
     val st = LocalHomeStyle.current
     val neon = st.theme == HomeTheme.NEON
+    val glass = st.theme == HomeTheme.GLASS
     val src = interactionSource ?: remember { MutableInteractionSource() }
-    val s: Shape = if (neon) shape ?: Pill else RectangleShape
+    val s: Shape = if (st.modern) shape ?: Pill else RectangleShape
     val inverse = st.focusStyle == FocusStyle.INVERSE
 
     val idleFill = container ?: if (emphasis && !neon) st.accent2 else st.chipFill
@@ -88,7 +89,14 @@ fun NeonSurface(
         else -> st.chipFillFocused
     }
     val idleContent = if (neon) Neon.Text else if (emphasis) st.onAccent else st.text
-    val focusContent = if (neon) Color.White else if (inverse) st.onFocus else idleContent
+    // Glass turns a focused button white with dark text, except where the caller keeps its own
+    // fill (team color, light color): there the text stays light
+    val focusContent = when {
+        neon -> Color.White
+        glass && focusedContainer != null -> idleContent
+        inverse -> st.onFocus
+        else -> idleContent
+    }
 
     val width = strokeWidth ?: st.chipBorderWidth
     val idleStroke = BorderStroke(width, stroke ?: st.chipStroke)
@@ -120,14 +128,19 @@ fun NeonSurface(
             pressedContainerColor = focusFill,
             pressedContentColor = focusContent,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = if (neon) focusedScale else 1f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = if (st.modern) focusedScale else 1f),
         border = ClickableSurfaceDefaults.border(
             border = Border(idleStroke, shape = s),
             focusedBorder = Border(focusStroke, shape = s),
         ),
         glow = ClickableSurfaceDefaults.glow(
             glow = if (neon) idleGlow else Glow.None,
-            focusedGlow = if (neon) Glow(glowColor.copy(alpha = 0.45f), 12.dp) else Glow.None,
+            focusedGlow = when {
+                neon -> Glow(glowColor.copy(alpha = 0.45f), 12.dp)
+                // Glass: the lifted white button casts a soft shadow instead of a glow
+                glass -> Glow(Color.Black.copy(alpha = 0.4f), 12.dp)
+                else -> Glow.None
+            },
         ),
         interactionSource = src,
     ) {

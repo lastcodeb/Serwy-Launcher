@@ -23,6 +23,7 @@ import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.PinResult
 import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.ui.gazete.GazeteHome
+import dev.mibox.neon.ui.glass.GlassHome
 import dev.mibox.neon.ui.teletext.TeletextHome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,7 +32,7 @@ import dev.mibox.neon.i18n.t
 /**
  * The shell shared by every home theme: toasts, the lifecycle and polling block, the overlays
  * (menus, panels, Wrapped, the theme picker) and the style. The themed home itself is drawn
- * underneath: [NeonHome], [GazeteHome] or [TeletextHome], all fed by the same [HomeActions].
+ * underneath: [NeonHome], [GazeteHome], [TeletextHome] or [GlassHome], all fed by the same [HomeActions].
  */
 @Composable
 fun LauncherScreen(vm: LauncherViewModel) {
@@ -140,6 +141,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 HomeTheme.NEON -> NeonHome(vm, actions, signals)
                 HomeTheme.GAZETE -> GazeteHome(vm, actions, signals)
                 HomeTheme.TELETEXT -> TeletextHome(vm, actions, signals)
+                HomeTheme.GLASS -> GlassHome(vm, actions, signals)
             }
 
             contentMenuFor?.let { item ->

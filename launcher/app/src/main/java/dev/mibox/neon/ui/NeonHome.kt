@@ -178,7 +178,7 @@ private fun HeroHost(vm: LauncherViewModel, focus: MutableState<Focus?>) {
     val f = focus.value
     val s = slide
     val content: HeroContent? = when {
-        s != null && s < showcase.size -> showcase[s].let { HeroContent("Favorilerin", it.label, null, it) }
+        s != null && s < showcase.size -> showcase[s].let { HeroContent(t("Favorilerin"), it.label, null, it) }
         // Episodes keep their season/episode line, recommendations say where they come from;
         // apps are just their name
         f is Focus.Watch && f.app != null -> HeroContent(null, f.item.title, f.item.subtitle ?: f.app.label, f.app)

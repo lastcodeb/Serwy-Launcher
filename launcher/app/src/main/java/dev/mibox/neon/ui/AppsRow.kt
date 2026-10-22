@@ -571,7 +571,7 @@ fun FooterLabel(focus: State<Focus?>, moving: Boolean) {
 }
 
 /** While a card is being moved it swallows the D-pad: left/right swap, OK drops it. */
-private fun moveKeys(e: KeyEvent, vm: LauncherViewModel): Boolean = when (e.key) {
+internal fun moveKeys(e: KeyEvent, vm: LauncherViewModel): Boolean = when (e.key) {
     Key.DirectionLeft -> {
         if (e.type == KeyEventType.KeyDown) vm.move(-1)
         true

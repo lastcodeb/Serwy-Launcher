@@ -201,7 +201,7 @@ private fun SignalBars(bars: Int?) {
     val st = LocalHomeStyle.current
     val on = st.ok
     val off = st.text.copy(alpha = 0.18f)
-    val round = st.theme == HomeTheme.NEON
+    val round = st.modern
     Canvas(Modifier.size(width = 22.dp, height = 16.dp)) {
         val bw = size.width / 5.5f
         val gap = bw * 0.5f
@@ -233,7 +233,7 @@ private fun HistoryChart(history: List<SpeedResult>) {
     val ok = st.ok
     val warn = st.warn
     val danger = st.danger
-    val round = st.theme == HomeTheme.NEON
+    val round = st.modern
     Canvas(Modifier.fillMaxWidth().height(90.dp)) {
         val slot = size.width / NetHealth.HISTORY_MAX
         val bw = slot * 0.62f

@@ -137,6 +137,37 @@ class AppRepository(private val ctx: Context) {
             }.getOrNull()
     }
 
+    /**
+     * The Glass home's top shelf: the focused content's image or app banner, large. Only the last
+     * two are kept (~2 MB each in RGB_565); null for apps without a banner.
+     */
+    suspend fun largeArt(item: WatchItem): ImageBitmap? {
+        val uri = item.imageUri ?: return null
+        return large("watch:${item.id}:$uri") {
+            WatchNext.loadThumbnail(ctx, uri, (LARGE_W_DP * pxPerDp).toInt(), (LARGE_W_DP * pxPerDp).toInt() * 9 / 16)
+        }
+    }
+
+    suspend fun largeArt(app: AppEntry): ImageBitmap? = large("app:${app.pkg}") {
+        val ai = pm.getActivityInfo(app.component, 0)
+        val banner = ai.loadBanner(pm) ?: ai.applicationInfo.loadBanner(pm) ?: return@large null
+        val w = (LARGE_BANNER_W_DP * pxPerDp).toInt()
+        val bmp = draw(banner, w, w * 9 / 16)
+        if (isOpaque(bmp)) bmp.copy(Bitmap.Config.RGB_565, false).also { bmp.recycle() } else bmp
+    }
+
+    private suspend fun large(key: String, load: () -> Bitmap?): ImageBitmap? = withContext(Dispatchers.IO) {
+        synchronized(largeCache) { largeCache[key] }
+            ?: runCatching { load() }.getOrNull()?.let { bmp ->
+                bmp.prepareToDraw()
+                bmp.asImageBitmap().also { synchronized(largeCache) { largeCache[key] = it } }
+            }
+    }
+
+    private val largeCache = object : LinkedHashMap<String, ImageBitmap>(4, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>) = size > LARGE_CACHE
+    }
+
     // Access-ordered LRU: scrolling the row keeps re-showing the same few heroes
     private val heroCache = object : LinkedHashMap<String, ImageBitmap>(8, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ImageBitmap>) = size > HERO_CACHE
@@ -174,6 +205,7 @@ class AppRepository(private val ctx: Context) {
     fun trimCaches() {
         synchronized(arts) { arts.keys.removeAll { it.startsWith("watch:") } }
         synchronized(heroCache) { heroCache.clear() }
+        synchronized(largeCache) { largeCache.clear() }
     }
 
     /** Average color of one pixel row; null when it is mostly transparent. */
@@ -215,6 +247,9 @@ class AppRepository(private val ctx: Context) {
         const val ICON_DP = 44
         const val HERO_ICON_DP = 230
         const val HERO_CACHE = 3
+        const val LARGE_W_DP = 672
+        const val LARGE_BANNER_W_DP = 320
+        const val LARGE_CACHE = 2
         const val FALLBACK_VIBRANT = 0xFF8B5CF6.toInt()
         const val FALLBACK_DEEP = 0xFF1E1A3D.toInt()
     }

@@ -207,6 +207,9 @@ class HomeStyle(
 ) {
     val panelShape: Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(panelRadius)
 
+    /** Neon and Glass: rounded pills, scale on focus, symbols in the system font. */
+    val modern: Boolean get() = theme == HomeTheme.NEON || theme == HomeTheme.GLASS
+
     /** [neonRadius] on Neon, square corners elsewhere. */
     fun shapeOf(neonRadius: Dp): Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(neonRadius)
 
@@ -258,7 +261,7 @@ class HomeStyle(
      * [s] back untouched. One pass over the code points, no regex.
      */
     fun clean(s: String): String {
-        if (theme == HomeTheme.NEON) return s
+        if (symbols) return s
         val sb = StringBuilder(s.length)
         var pendingSpace = false
         var i = 0
@@ -280,7 +283,7 @@ class HomeStyle(
     /** "✓ " in front of the chosen entry, "" otherwise. [spaces] only matters on Neon. */
     fun mark(on: Boolean, spaces: Int = 1): String = when {
         !on -> ""
-        theme == HomeTheme.NEON -> "✓" + " ".repeat(spaces)
+        theme == HomeTheme.NEON || theme == HomeTheme.GLASS -> "✓" + " ".repeat(spaces)
         theme == HomeTheme.GAZETE -> "• "
         else -> "* "
     }
@@ -378,11 +381,12 @@ fun rememberHomeStyle(theme: HomeTheme, gazeteNight: Boolean): HomeStyle {
             HomeTheme.NEON -> neonStyle(typography)
             HomeTheme.GAZETE -> gazeteStyle(gazeteNight)
             HomeTheme.TELETEXT -> teletextStyle()
+            HomeTheme.GLASS -> glassStyle()
         }
     }
 }
 
-// --- The three styles --------------------------------------------------------------------------
+// --- The four styles --------------------------------------------------------------------------
 
 /** Today's launcher, token for token. */
 internal fun neonStyle(t: Typography): HomeStyle = HomeStyle(
@@ -562,6 +566,78 @@ internal fun teletextStyle(): HomeStyle {
         focusStyle = FocusStyle.INVERSE,
         uppercaseLabels = true,
         symbols = false,
+        doubleRule = false,
+    )
+}
+
+/** Apple TV-like glass: system sans, white on deep color, frosted panels, white focus lift. */
+object GlassPalette {
+    val Ink = Color(0xFF0B0D12)
+    val Blue = Color(0xFF0A84FF)
+    val OnWhite = Color(0xFF111114)
+
+    /** Frosted fill of chips and the shelf; the backdrop behind it is already blurred. */
+    val Frost = Color.White.copy(alpha = 0.12f)
+    val Rim = Color.White.copy(alpha = 0.22f)
+}
+
+internal fun glassStyle(): HomeStyle {
+    val g = GlassPalette
+    val sans = FontFamily.SansSerif
+    return HomeStyle(
+        theme = HomeTheme.GLASS,
+        night = false,
+        background = g.Ink,
+        // Dialogs float over the home without a blur behind them: nearly opaque smoked glass
+        surface = Color(0xF21C1D24),
+        surfaceHi = Color.White.copy(alpha = 0.14f),
+        panelBorder = Color.White.copy(alpha = 0.16f),
+        text = Color.White,
+        textSoft = Color.White.copy(alpha = 0.92f),
+        textBody = Color.White.copy(alpha = 0.86f),
+        textDim = Color.White.copy(alpha = 0.62f),
+        textMuted = Color.White.copy(alpha = 0.45f),
+        accent = g.Blue,
+        accent2 = g.Blue,
+        onAccent = Color.White,
+        eyebrow = Color.White.copy(alpha = 0.62f),
+        focus = Color.White,
+        onFocus = g.OnWhite,
+        divider = Color.White.copy(alpha = 0.12f),
+        ok = Color(0xFF30D158),
+        warn = Color(0xFFFFD60A),
+        danger = Color(0xFFFF453A),
+        chipFill = g.Frost,
+        chipFillFocused = Color.White,
+        chipStroke = g.Rim,
+        track = Color.White.copy(alpha = 0.16f),
+        icon = Color.White.copy(alpha = 0.9f),
+        weatherIcon = Color.White,
+        placeholder = Color.White.copy(alpha = 0.08f),
+        titleColor = Color.White,
+        titleBrush = null,
+        accentBrush = null,
+        ctaBrush = null,
+        barBrush = SolidColor(Color.White),
+        display = TextStyle(fontFamily = sans, fontSize = 60.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1.2).sp),
+        headline = TextStyle(fontFamily = sans, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+        body = TextStyle(fontFamily = sans, fontSize = 14.sp, fontWeight = FontWeight.Normal),
+        label = TextStyle(fontFamily = sans, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
+        item = TextStyle(fontFamily = sans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+        displayFont = sans,
+        headlineFont = sans,
+        bodyFont = sans,
+        labelFont = sans,
+        fontScale = 1f,
+        labelTracking = TextUnit.Unspecified,
+        displayTracking = (-1.2).sp,
+        panelRadius = 26.dp,
+        borderWidth = 1.dp,
+        chipBorderWidth = 0.75.dp,
+        chipShape = Pill,
+        focusStyle = FocusStyle.INVERSE,
+        uppercaseLabels = false,
+        symbols = true,
         doubleRule = false,
     )
 }

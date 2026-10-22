@@ -76,7 +76,7 @@ private fun MenuItem(text: String, onClick: () -> Unit, modifier: Modifier = Mod
             st.caps(st.plain(text)),
             modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 18.dp),
             // Other themes set menu rows as labels: condensed caps / teletext lines
-            style = if (st.theme == HomeTheme.NEON) st.item else st.type(16.sp, FontWeight.SemiBold, role = TextRole.LABEL),
+            style = if (st.modern) st.item else st.type(16.sp, FontWeight.SemiBold, role = TextRole.LABEL),
         )
     }
 }
@@ -109,8 +109,8 @@ fun AppMenu(
     val wizIp by vm.wizIp.collectAsStateWithLifecycle()
     val pinned by vm.pinnedShowcase.collectAsStateWithLifecycle()
     val profile = profiles[app.pkg]
-    // Only the Neon rows can reorder apps; the other homes have no "moving" mode
-    val canMove = st.theme == HomeTheme.NEON
+    // Only the Neon and Glass rows can reorder apps; the other homes have no "moving" mode
+    val canMove = st.modern
 
     NeonDialog(onDismiss) {
         Text(app.label, style = st.headline)

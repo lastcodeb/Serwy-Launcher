@@ -118,7 +118,7 @@ fun ControlCenter(
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Chip(if (wiz?.on == true) t("Kapat") else t("Aç"), onClick = vm::wizToggle, leading = "⏻")
+                        Chip(if (wiz?.on == true) t("Kapat") else t("Aç"), onClick = vm::wizToggle, leading = "🔌")
                         Chip(t("Tüm ışık ayarları"), onClick = onOpenLight, leading = "💡")
                     }
                 } else {
@@ -132,7 +132,7 @@ fun ControlCenter(
                     Chip(
                         if (f != null) {
                             t("Kapatıldı · +{0} MB", f / (1024 * 1024))
-                        } else if (st.theme == HomeTheme.NEON) {
+                        } else if (st.modern) {
                             t("Arka plandaki uygulamaları kapat · RAM %{0}", ram.usedPercent)
                         } else {
                             // Shorter: the wide fonts would squeeze the speed chip beside it
@@ -141,7 +141,7 @@ fun ControlCenter(
                         onClick = vm::boost,
                         leading = "⚡",
                     )
-                    Chip(speedLabel(speed, net.last), onClick = vm::runSpeedTest, leading = "📶", modifier = if (st.theme == HomeTheme.NEON) Modifier else Modifier.widthIn(min = 100.dp))
+                    Chip(speedLabel(speed, net.last), onClick = vm::runSpeedTest, leading = "📶", modifier = if (st.modern) Modifier else Modifier.widthIn(min = 100.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (wizIp != null) Chip(sleepLabel(sleepAt), onClick = vm::wizCycleSleep, leading = "🌙")
