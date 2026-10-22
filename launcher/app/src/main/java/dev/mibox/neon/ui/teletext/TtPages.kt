@@ -53,6 +53,7 @@ import dev.mibox.neon.ui.verdictText
 import java.time.format.DateTimeFormatter
 import kotlin.math.ceil
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 private val KickDay = DateTimeFormatter.ofPattern("EEE dd.MM", TR)
 private val KickHour = DateTimeFormatter.ofPattern("HH.mm", TR)
@@ -80,9 +81,9 @@ internal fun TtResumePage(ctx: TtCtx) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TtBand("Kaldığın yerden", "200", TtMagenta, TtBlack, size = TtSp2, height = 40.dp)
+        TtBand(t("Kaldığın yerden"), "200", TtMagenta, TtBlack, size = TtSp2, height = 40.dp)
 
-        TtBand("İzlemeye devam et", "İlerleme", TtCyan, TtBlack)
+        TtBand(t("İzlemeye devam et"), t("İlerleme"), TtCyan, TtBlack)
         if (shownWatch.isEmpty()) TtEmpty()
         shownWatch.forEachIndexed { i, item ->
             key(item.id) {
@@ -90,7 +91,7 @@ internal fun TtResumePage(ctx: TtCtx) {
             }
         }
 
-        TtBand("Senin için", "Öneriler", TtRed, TtBlack)
+        TtBand(t("Senin için"), t("Öneriler"), TtRed, TtBlack)
         if (shownYou.isEmpty()) TtEmpty()
         shownYou.forEachIndexed { i, item ->
             key(item.id) {
@@ -109,7 +110,7 @@ internal fun TtResumePage(ctx: TtCtx) {
             }
         }
 
-        TtBand("Favoriler", "Sabitlenenler", TtGreen, TtBlack)
+        TtBand(t("Favoriler"), t("Sabitlenenler"), TtGreen, TtBlack)
         if (shownCards.isEmpty()) TtEmpty()
         shownCards.forEachIndexed { i, card ->
             key(card.key) {
@@ -132,7 +133,7 @@ internal fun TtResumePage(ctx: TtCtx) {
                         Modifier.weight(1f),
                     )
                     TtText(
-                        if (card is FavoriteCard.Content) "İçerik" else "Uygulama",
+                        if (card is FavoriteCard.Content) t("İçerik") else t("Uygulama"),
                         tc(f, TtCyan),
                         Modifier.padding(horizontal = 8.dp),
                     )
@@ -160,7 +161,7 @@ private fun TtWatchRow(ctx: TtCtx, item: WatchItem, number: Int, requester: Focu
                 TtText(number.toString(), tc(f, TtYellow))
                 Spacer(Modifier.width(12.dp))
                 TtLead(app?.label ?: item.pkg.substringAfterLast('.'), tc(f, TtCyan), Modifier.weight(1f))
-                TtText("Devam et", tc(f, TtWhite), Modifier.padding(horizontal = 8.dp))
+                TtText(t("Devam et"), tc(f, TtWhite), Modifier.padding(horizontal = 8.dp))
             }
             Row(Modifier.height(TtRowH).padding(start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TtText(
@@ -173,7 +174,7 @@ private fun TtWatchRow(ctx: TtCtx, item: WatchItem, number: Int, requester: Focu
                     Spacer(Modifier.width(12.dp))
                     TtBar(p)
                     Spacer(Modifier.width(8.dp))
-                    TtText("%${(p * 100).roundToInt()}", tc(f, TtCyan))
+                    TtText(t("%{0}", (p * 100).roundToInt()), tc(f, TtCyan))
                 }
                 Spacer(Modifier.width(8.dp))
             }
@@ -187,17 +188,17 @@ private fun oppShort(m: MatchState): String = m.opponentShort.ifBlank { m.oppone
 
 /** "Süper Lig · iç saha galibiyeti"; a draw has no venue form: "Süper Lig · beraberlik". */
 private fun resultLine(competition: String, home: Boolean, r: MatchResult): String {
-    val venue = if (home) "iç saha" else "deplasman"
+    val venue = if (home) t("iç saha") else "deplasman"
     val word = when (r) {
-        MatchResult.WIN -> "$venue galibiyeti"
+        MatchResult.WIN -> t("{0} galibiyeti", venue)
         MatchResult.DRAW -> "beraberlik"
-        MatchResult.LOSS -> "$venue mağlubiyeti"
+        MatchResult.LOSS -> t("{0} mağlubiyeti", venue)
     }
     return "$competition · $word"
 }
 
 /** On/off value of a setting: green AÇIK, red KAPALI. */
-private fun onOff(on: Boolean): String = if (on) "Açık" else "Kapalı"
+private fun onOff(on: Boolean): String = if (on) t("Açık") else t("Kapalı")
 
 @Composable
 private fun TtSettingRow(
@@ -241,15 +242,15 @@ internal fun TtSportPage(ctx: TtCtx) {
     val nav = ctx.nav
 
     Column(Modifier.fillMaxSize()) {
-        TtBand("Spor · Galatasaray", "300", TtRed, TtWhite, rightColor = TtYellow, size = TtSp2, height = 40.dp)
+        TtBand(t("Spor · Galatasaray"), "300", TtRed, TtWhite, rightColor = TtYellow, size = TtSp2, height = 40.dp)
         TtStripe()
 
         if (!enabled) {
-            TtBand("Maç günü", "Kapalı", TtRed, TtWhite)
-            TtLine("Maç günü kapalı: skor ve ışık efektleri durdu", TtCyan)
+            TtBand(t("Maç günü"), t("Kapalı"), TtRed, TtWhite)
+            TtLine(t("Maç günü kapalı: skor ve ışık efektleri durdu"), TtCyan)
         } else if (m == null) {
-            TtBand("Maç günü", "Açık", TtBlue, TtWhite)
-            TtLine("Yaklaşan maç yok: fikstür yüklenemedi ya da sezon arası.", TtCyan)
+            TtBand(t("Maç günü"), t("Açık"), TtBlue, TtWhite)
+            TtLine(t("Yaklaşan maç yok: fikstür yüklenemedi ya da sezon arası."), TtCyan)
         } else {
             val homeName = if (m.home) team.name else m.opponent
             val awayName = if (m.home) m.opponent else team.name
@@ -257,7 +258,7 @@ internal fun TtSportPage(ctx: TtCtx) {
             val awayShort = if (m.home) oppShort(m) else team.shortName
             when (m) {
                 is MatchState.Upcoming -> {
-                    TtBand("Sıradaki maç", m.competition, TtCyan, TtBlack)
+                    TtBand(t("Sıradaki maç"), m.competition, TtCyan, TtBlack)
                     Row(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TtText("$homeName - $awayName", TtYellow, Modifier.weight(1f), TtSp2)
                     }
@@ -265,25 +266,25 @@ internal fun TtSportPage(ctx: TtCtx) {
                         TtText(m.kickoff.format(KickDay), TtWhite)
                         TtText(m.kickoff.format(KickHour), TtYellow)
                         TtText(m.competition, TtCyan)
-                        TtText(if (m.home) "İç saha" else "Deplasman", TtGreen)
+                        TtText(if (m.home) t("İç saha") else t("Deplasman"), TtGreen)
                     }
                 }
                 is MatchState.Live -> {
                     val a = if (m.home) m.gsScore else m.oppScore
                     val b = if (m.home) m.oppScore else m.gsScore
-                    TtBand("Canlı", m.competition, TtRed, TtWhite)
+                    TtBand(t("Canlı"), m.competition, TtRed, TtWhite)
                     Row(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TtText("$homeShort $a - $b $awayShort", TtYellow, Modifier.weight(1f), TtSp2)
                     }
                     Row(Modifier.fillMaxWidth().height(TtRowH).padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                         TtText("${m.clock} ${m.status}".trim(), TtGreen)
-                        TtText("301 canlı sayfa", TtCyan)
+                        TtText(t("301 canlı sayfa"), TtCyan)
                     }
                 }
                 is MatchState.Finished -> {
                     val a = if (m.home) m.gsScore else m.oppScore
                     val b = if (m.home) m.oppScore else m.gsScore
-                    TtBand("Son sonuç", m.kickoff.format(KickDay), TtGreen, TtBlack)
+                    TtBand(t("Son sonuç"), m.kickoff.format(KickDay), TtGreen, TtBlack)
                     Row(Modifier.fillMaxWidth().height(40.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         TtText("$homeName $a-$b $awayName", TtYellow, Modifier.weight(1f), TtSp2)
                     }
@@ -299,22 +300,22 @@ internal fun TtSportPage(ctx: TtCtx) {
             val b = if (lastRes.home) lastRes.oppScore else lastRes.gsScore
             val homeName = if (lastRes.home) team.name else lastRes.opponent
             val awayName = if (lastRes.home) lastRes.opponent else team.name
-            TtBand("Son sonuç", lastRes.kickoff.format(KickDay), TtGreen, TtBlack)
+            TtBand(t("Son sonuç"), lastRes.kickoff.format(KickDay), TtGreen, TtBlack)
             TtLine("$homeName $a-$b $awayName", TtYellow)
             TtLine(resultLine(lastRes.competition, lastRes.home, lastRes.result), TtCyan)
         }
         Spacer(Modifier.height(TtRowH))
 
-        TtBand("Maç günü ayarları", "OK: değiştir", TtBlue, TtWhite, rightColor = TtYellow)
+        TtBand(t("Maç günü ayarları"), t("OK: değiştir"), TtBlue, TtWhite, rightColor = TtYellow)
         // The master switch stays first and keeps focus; the rest stays in place, dimmed and inert, while it is off
-        TtSettingRow("Maç günü", onOff(enabled), if (enabled) TtGreen else TtRed, { vm.setMatchEnabled(!enabled) }, nav.first)
+        TtSettingRow(t("Maç günü"), onOff(enabled), if (enabled) TtGreen else TtRed, { vm.setMatchEnabled(!enabled) }, nav.first)
         val pkg = appPkg
-        val appLabel = if (pkg == null) "Seçilmedi" else apps.firstOrNull { it.pkg == pkg }?.label ?: "Yüklü değil"
+        val appLabel = if (pkg == null) t("Seçilmedi") else apps.firstOrNull { it.pkg == pkg }?.label ?: t("Yüklü değil")
         if (enabled) {
-            TtSettingRow("Gol efekti", onOff(goal), if (goal) TtGreen else TtRed, { vm.setMatchGoalEffect(!goal) })
+            TtSettingRow(t("Gol efekti"), onOff(goal), if (goal) TtGreen else TtRed, { vm.setMatchGoalEffect(!goal) })
             TtSettingRow(
-                "Yayın gecikmesi",
-                "$delaySec sn",
+                t("Yayın gecikmesi"),
+                t("{0} sn", delaySec),
                 TtYellow,
                 {
                     // Cycles 0 / 15 / 30 / 45 / 60 / 90; an unknown stored value starts the cycle over
@@ -322,11 +323,11 @@ internal fun TtSportPage(ctx: TtCtx) {
                     vm.setMatchDelay(options[(options.indexOf(delaySec) + 1) % options.size])
                 },
             )
-            TtSettingRow("Maçı izlediğim uygulama", appLabel, if (pkg == null) TtMagenta else TtCyan, ctx.actions.onOpenMatch)
+            TtSettingRow(t("Maçı izlediğim uygulama"), appLabel, if (pkg == null) TtMagenta else TtCyan, ctx.actions.onOpenMatch)
         } else {
-            TtDimRow("Gol efekti", onOff(goal))
-            TtDimRow("Yayın gecikmesi", "$delaySec sn")
-            TtDimRow("Maçı izlediğim uygulama", appLabel)
+            TtDimRow(t("Gol efekti"), onOff(goal))
+            TtDimRow(t("Yayın gecikmesi"), t("{0} sn", delaySec))
+            TtDimRow(t("Maçı izlediğim uygulama"), appLabel)
         }
 
         Spacer(Modifier.weight(1f))
@@ -337,14 +338,14 @@ internal fun TtSportPage(ctx: TtCtx) {
             if (m is MatchState.Live) {
                 TtButton(onClick = { ctx.go(TtPage.LIVE) }, color = TtRed) {
                     TtText("301", it)
-                    TtText("Canlı", it)
+                    TtText(t("Canlı"), it)
                 }
             }
             if (enabled) {
                 TtButton(
                     onClick = { if (!vm.launchMatchApp()) ctx.actions.onOpenMatch() },
                     color = TtYellow,
-                ) { TtText("Maçı aç", it) }
+                ) { TtText(t("Maçı aç"), it) }
             }
         }
     }
@@ -375,14 +376,14 @@ internal fun TtLivePage(ctx: TtCtx) {
 
     Column(Modifier.fillMaxSize()) {
         TtBand(
-            if (live != null) "Canlı · ${live.competition}" else "Canlı maç yok",
+            if (live != null) t("Canlı · {0}", live.competition) else t("Canlı maç yok"),
             "301",
             TtRed,
             TtBlack,
         )
         if (live == null) {
-            TtLine("Şu an oynanan bir Galatasaray maçı yok.", TtCyan)
-            TtLine("Sıradaki maç ve son sonuç için 300 Spor sayfasına bak.", TtWhite)
+            TtLine(t("Şu an oynanan bir Galatasaray maçı yok."), TtCyan)
+            TtLine(t("Sıradaki maç ve son sonuç için 300 Spor sayfasına bak."), TtWhite)
         } else {
             val phase = rememberTtBlink()
             val homeName = if (live.home) team.name else live.opponent
@@ -409,7 +410,7 @@ internal fun TtLivePage(ctx: TtCtx) {
                                 .graphicsLayer { alpha = if (phase.value < 0.5f) 1f else 0f }
                                 .background(TtRed)
                                 .padding(horizontal = 6.dp),
-                        ) { TtText("Canlı", TtBlack) }
+                        ) { TtText(t("Canlı"), TtBlack) }
                     }
                     TtLine("$homeName - $awayName", TtCyan, inset = 0.dp)
                 }
@@ -417,17 +418,17 @@ internal fun TtLivePage(ctx: TtCtx) {
         }
 
         Spacer(Modifier.height(TtRowH))
-        TtBand("Maç günü durumu", "300 ayarlar", TtBlue, TtWhite, rightColor = TtYellow)
+        TtBand(t("Maç günü durumu"), t("300 ayarlar"), TtBlue, TtWhite, rightColor = TtYellow)
         Row(
             Modifier.fillMaxWidth().height(TtRowH).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(28.dp),
         ) {
             if (!enabled) {
-                TtText("Maç günü kapalı", TtRed)
+                TtText(t("Maç günü kapalı"), TtRed)
             } else {
-                TtStatusPair("Işıklar", onOff(true), TtGreen)
-                TtStatusPair("Gol efekti", onOff(goal), if (goal) TtGreen else TtRed)
-                TtStatusPair("Yayın gecikmesi", "$delaySec sn", TtYellow)
+                TtStatusPair(t("Işıklar"), onOff(true), TtGreen)
+                TtStatusPair(t("Gol efekti"), onOff(goal), if (goal) TtGreen else TtRed)
+                TtStatusPair(t("Yayın gecikmesi"), t("{0} sn", delaySec), TtYellow)
             }
         }
 
@@ -440,10 +441,10 @@ internal fun TtLivePage(ctx: TtCtx) {
                 onClick = { if (!vm.launchMatchApp()) ctx.actions.onOpenMatch() },
                 color = TtYellow,
                 requester = ctx.nav.first,
-            ) { TtText("Maçı aç", it) }
+            ) { TtText(t("Maçı aç"), it) }
             TtButton(onClick = { ctx.go(TtPage.SPORT) }, color = TtRed) {
                 TtText("300", it)
-                TtText("Spor", it)
+                TtText(t("Spor"), it)
             }
         }
     }
@@ -472,10 +473,10 @@ private fun TtStatusPair(label: String, value: String, valueColor: Color) {
 // --- P400 Hava + 450 Ağ durumu -------------------------------------------------------------------
 
 private fun linkName(t: LinkType): String = when (t) {
-    LinkType.ETHERNET -> "Kablolu"
+    LinkType.ETHERNET -> t("Kablolu")
     LinkType.WIFI -> "Wi-Fi"
-    LinkType.OTHER -> "Diğer"
-    LinkType.NONE -> "Bağlantı yok"
+    LinkType.OTHER -> t("Diğer")
+    LinkType.NONE -> t("Bağlantı yok")
 }
 
 /** P400: the weather now, then the 450 network block. No forecast: the app has no forecast data. */
@@ -491,7 +492,7 @@ internal fun TtWeatherPage(ctx: TtCtx) {
     val w = weather
 
     Column(Modifier.fillMaxSize()) {
-        TtBand("Hava · ${city.name}", "400", TtCyan, TtBlack, size = TtSp2, height = 40.dp)
+        TtBand(t("Hava · {0}", city.name), "400", TtCyan, TtBlack, size = TtSp2, height = 40.dp)
 
         Row(
             Modifier.fillMaxWidth().height(100.dp).padding(horizontal = 8.dp),
@@ -505,7 +506,7 @@ internal fun TtWeatherPage(ctx: TtCtx) {
                 }
                 Box(Modifier.height(40.dp), contentAlignment = Alignment.CenterStart) {
                     TtText(
-                        if (w != null) Weather.describe(w.code, w.isDay).second else "Hava bilgisi alınamadı",
+                        if (w != null) Weather.describe(w.code, w.isDay).second else t("Hava bilgisi alınamadı"),
                         TtCyan,
                         size = TtSp2,
                     )
@@ -513,7 +514,7 @@ internal fun TtWeatherPage(ctx: TtCtx) {
             }
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
-                TtLine("Şu an · ${NowDay.format(now)}", TtWhite, inset = 0.dp)
+                TtLine(t("Şu an · {0}", NowDay.format(now)), TtWhite, inset = 0.dp)
                 TtLine(city.name, TtCyan, inset = 0.dp)
             }
         }
@@ -521,20 +522,20 @@ internal fun TtWeatherPage(ctx: TtCtx) {
         Spacer(Modifier.height(TtRowH))
         val last = net.last
         TtBand(
-            "450 Ağ durumu",
-            if (last != null) "Son ölçüm ${fmtMbps(last.mbps)} Mbps" else "Ölçüm yok",
+            t("450 Ağ durumu"),
+            if (last != null) t("Son ölçüm {0} Mbps", fmtMbps(last.mbps)) else t("Ölçüm yok"),
             TtMagenta,
             TtBlack,
         )
         Row(Modifier.fillMaxWidth().height(100.dp)) {
             Column(Modifier.weight(1f)) {
-                TtNetRow("Bağlantı", linkName(net.link))
+                TtNetRow(t("Bağlantı"), linkName(net.link))
                 if (net.link == LinkType.WIFI) {
-                    TtNetRow("Sinyal", net.rssiDbm?.let { "$it dBm" } ?: "–")
-                    TtNetRow("Bağlantı hızı", net.linkMbps?.let { "$it Mbps" } ?: "–")
+                    TtNetRow(t("Sinyal"), net.rssiDbm?.let { "$it dBm" } ?: "–")
+                    TtNetRow(t("Bağlantı hızı"), net.linkMbps?.let { "$it Mbps" } ?: "–")
                 }
-                TtNetRow("Gecikme", net.latencyMs?.let { "$it ms" } ?: "–")
-                TtNetRow("Son ölçüm", if (last != null) "${fmtMbps(last.mbps)} Mbps" else "Henüz yok")
+                TtNetRow(t("Gecikme"), net.latencyMs?.let { "$it ms" } ?: "–")
+                TtNetRow(t("Son ölçüm"), if (last != null) "${fmtMbps(last.mbps)} Mbps" else t("Henüz yok"))
             }
             Spacer(Modifier.width(28.dp))
             Column(Modifier.width(320.dp)) {
@@ -545,7 +546,7 @@ internal fun TtWeatherPage(ctx: TtCtx) {
                 }
                 TtHistory(history)
                 TtLine(
-                    if (history.isEmpty()) "Henüz ölçüm yok" else "Son ${history.takeLast(HistoryCols).size} ölçüm · kırmızı çizgi: 25 Mbps",
+                    if (history.isEmpty()) t("Henüz ölçüm yok") else t("Son {0} ölçüm · kırmızı çizgi: 25 Mbps", history.takeLast(HistoryCols).size),
                     TtCyan,
                 )
             }
@@ -609,12 +610,12 @@ private fun TtSpeedRow(ctx: TtCtx) {
         onLongClick = ctx.actions.onOpenNet,
         requester = ctx.nav.first,
     ) { f ->
-        TtLead(if (s is SpeedState.Running) "Ölçülüyor..." else "Hızı ölç", tc(f, TtYellow), Modifier.weight(1f))
+        TtLead(if (s is SpeedState.Running) t("Ölçülüyor...") else t("Hızı ölç"), tc(f, TtYellow), Modifier.weight(1f))
         val right = when (s) {
             is SpeedState.Running -> "${fmtMbps(s.mbps)} Mbps"
             is SpeedState.Done -> "${fmtMbps(s.mbps)} Mbps"
-            SpeedState.Failed -> "Ölçülemedi"
-            SpeedState.Idle -> "OK: başlat · uzun bas: ayrıntı"
+            SpeedState.Failed -> t("Ölçülemedi")
+            SpeedState.Idle -> t("OK: başlat · uzun bas: ayrıntı")
         }
         TtText(right, tc(f, TtCyan), Modifier.padding(horizontal = 8.dp))
     }
@@ -632,8 +633,8 @@ internal fun TtAppsPage(ctx: TtCtx) {
     LaunchedEffect(ctx.nav.tick.intValue) { listState.scrollToItem(0) }
 
     Column(Modifier.fillMaxSize()) {
-        TtBand("Uygulamalar", "500", TtGreen, TtBlack, size = TtSp2, height = 40.dp)
-        TtBand("Tüm uygulamalar", "${apps.size} uygulama", TtYellow, TtBlack)
+        TtBand(t("Uygulamalar"), "500", TtGreen, TtBlack, size = TtSp2, height = 40.dp)
+        TtBand(t("Tüm uygulamalar"), t("{0} uygulama", apps.size), TtYellow, TtBlack)
         if (apps.isEmpty()) TtEmpty()
         LazyColumn(Modifier.fillMaxWidth().weight(1f), state = listState) {
             itemsIndexed(apps, key = { _, app -> app.pkg }) { i, app ->

@@ -53,6 +53,7 @@ import dev.mibox.neon.ui.HomeStyle
 import dev.mibox.neon.ui.LocalHomeStyle
 import dev.mibox.neon.ui.TeletextPalette
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 // --- Palette and metrics -------------------------------------------------------------------------
 // The concept is 1920x1080 px; the app lays out in 960x540 dp, so 40px rows are 20dp rows.
@@ -182,7 +183,7 @@ internal fun TtLine(
 
 /** "KAYIT YOK" and friends: what an empty section shows. */
 @Composable
-internal fun TtEmpty(text: String = "Kayıt yok") {
+internal fun TtEmpty(text: String = t("Kayıt yok")) {
     TtLine(text, TtCyan)
 }
 

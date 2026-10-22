@@ -81,6 +81,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
+import dev.mibox.neon.i18n.t
 
 private sealed interface WrappedLoad {
     data object Loading : WrappedLoad
@@ -110,7 +111,7 @@ private fun monthName(m: YearMonth): String = m.month.getDisplayName(JTextStyle.
 
 private fun hoursText(h: Double): String = String.format(TR, if (h >= 100) "%.0f" else "%.1f", h)
 
-private fun minutesText(min: Int): String = if (min >= 60) "${min / 60} sa ${min % 60} dk" else "$min dk"
+private fun minutesText(min: Int): String = if (min >= 60) t("{0} sa {1} dk", min / 60, min % 60) else t("{0} dk", min)
 
 private fun emojiOf(k: PersonaKind) = when (k) {
     PersonaKind.NIGHT_OWL -> "🦉"
@@ -279,7 +280,7 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     when (val l = load) {
                         WrappedLoad.Loading -> Text(
-                            "Yükleniyor…",
+                            t("Yükleniyor…"),
                             modifier = Modifier.align(Alignment.Center),
                             style = st.type(16.sp, color = st.textDim),
                         )
@@ -310,9 +311,9 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
 
                 Text(
                     if (st.symbols) {
-                        "◀ ▶ gezin" + (if (months.size > 1) "   ▲ ▼ ay değiştir" else "") + "   Geri: kapat"
+                        t("◀ ▶ gezin") + (if (months.size > 1) t("   ▲ ▼ ay değiştir") else "") + t("   Geri: kapat")
                     } else {
-                        st.caps("Sol/sağ: gezin" + (if (months.size > 1) "   Yukarı/aşağı: ay değiştir" else "") + "   Geri: kapat")
+                        st.caps(t("Sol/sağ: gezin") + (if (months.size > 1) t("   Yukarı/aşağı: ay değiştir") else "") + t("   Geri: kapat"))
                     },
                     style = st.type(11.sp, color = st.textMuted),
                 )
@@ -390,17 +391,17 @@ private fun EmptyState(usageAccess: Boolean) {
             Text("📊", style = TextStyle(fontSize = 56.sp), modifier = Modifier.popIn())
             Spacer(Modifier.height(8.dp))
         }
-        Text(st.caps("Henüz veri yok"), style = big(st, 44), modifier = Modifier.popIn(80))
+        Text(st.caps(t("Henüz veri yok")), style = big(st, 44), modifier = Modifier.popIn(80))
         Spacer(Modifier.height(10.dp))
         Text(
-            "Neon Wrapped, kullanım geçmişin biriktikçe oluşur. Birkaç gün sonra tekrar bak.",
+            t("Neon Wrapped, kullanım geçmişin biriktikçe oluşur. Birkaç gün sonra tekrar bak."),
             modifier = Modifier.widthIn(max = 560.dp),
             style = st.type(16.sp, color = st.textBody),
         )
         if (!usageAccess) {
             Spacer(Modifier.height(12.dp))
             Text(
-                "Kullanım erişimi verilmemiş. install.ps1 ile izin ver.",
+                t("Kullanım erişimi verilmemiş. install.ps1 ile izin ver."),
                 style = st.type(14.sp, FontWeight.SemiBold, st.warn),
             )
         }
@@ -415,11 +416,11 @@ private fun IntroSlide(s: WrappedSummary) {
         Eyebrow("Neon Wrapped")
         Text(st.caps(monthName(s.month)), style = big(st, 75), modifier = Modifier.popIn(60))
         Text(
-            if (running) "Bu ay (şu ana kadar)" else "${s.month.year}",
+            if (running) t("Bu ay (şu ana kadar)") else "${s.month.year}",
             style = st.type(16.sp, color = st.textBody),
         )
         Spacer(Modifier.height(18.dp))
-        Text("Toplam", style = st.type(14.sp, color = st.textDim))
+        Text(t("Toplam"), style = st.type(14.sp, color = st.textDim))
         Row(verticalAlignment = Alignment.Bottom) {
             Text(hoursText(s.totalHours), style = big(st, 92, st.accentBrush, st.accent), modifier = Modifier.popIn(240))
             Spacer(Modifier.width(12.dp))
@@ -432,7 +433,7 @@ private fun IntroSlide(s: WrappedSummary) {
         if (s.approximate) {
             Spacer(Modifier.height(6.dp))
             Text(
-                "Bu ay için yalnızca sistemin aylık toplamı var; ayrıntılar gösterilemiyor.",
+                t("Bu ay için yalnızca sistemin aylık toplamı var; ayrıntılar gösterilemiyor."),
                 style = st.type(12.sp, color = st.textMuted),
             )
         }
@@ -443,7 +444,7 @@ private fun IntroSlide(s: WrappedSummary) {
 private fun AppsSlide(vm: LauncherViewModel, s: WrappedSummary) {
     val maxShare = s.topApps.maxOf { it.share }.coerceAtLeast(0.01)
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Eyebrow("En çok izlenen")
+        Eyebrow(t("En çok izlenen"))
         Spacer(Modifier.height(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             s.topApps.forEachIndexed { i, a -> AppUsageRow(vm, a, i, (a.share / maxShare).toFloat()) }
@@ -473,7 +474,7 @@ private fun AppUsageRow(vm: LauncherViewModel, a: AppUsage, index: Int, frac: Fl
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    "${hoursText(a.hours)} sa · %${(a.share * 100).roundToInt()}",
+                    t("{0} sa · %{1}", hoursText(a.hours), (a.share * 100).roundToInt()),
                     style = st.type(13.sp, color = st.textSoft),
                     maxLines = 1,
                 )
@@ -539,14 +540,14 @@ private fun Fact(label: String, value: String, modifier: Modifier = Modifier, de
 @Composable
 private fun PeakSlide(s: WrappedSummary) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Eyebrow("Ne zaman izledin?")
+        Eyebrow(t("Ne zaman izledin?"))
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
             s.busiestWeekday?.let {
-                Fact("En yoğun gün", it.getDisplayName(JTextStyle.FULL, TR), Modifier.weight(1f), 80)
+                Fact(t("En yoğun gün"), it.getDisplayName(JTextStyle.FULL, TR), Modifier.weight(1f), 80)
             }
             s.busiestHour?.let {
-                Fact("En yoğun saat", "%02d:00 – %02d:00".format(it, (it + 1) % 24), Modifier.weight(1f), 200)
+                Fact(t("En yoğun saat"), "%02d:00 – %02d:00".format(it, (it + 1) % 24), Modifier.weight(1f), 200)
             }
         }
     }
@@ -556,11 +557,11 @@ private fun PeakSlide(s: WrappedSummary) {
 private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
     val st = LocalHomeStyle.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Eyebrow("Rekorların")
+        Eyebrow(t("Rekorların"))
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
             s.longestSession?.let { ls ->
-                Fact("En uzun oturum", minutesText(ls.minutes), Modifier.weight(1f), 80) {
+                Fact(t("En uzun oturum"), minutesText(ls.minutes), Modifier.weight(1f), 80) {
                     Spacer(Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         MiniBanner(vm, ls.pkg)
@@ -575,7 +576,7 @@ private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
                 }
             }
             s.streakDays?.let {
-                Fact("Üst üste aktif gün", "$it gün", Modifier.weight(1f), 200)
+                Fact(t("Üst üste aktif gün"), t("{0} gün", it), Modifier.weight(1f), 200)
             }
         }
     }
@@ -585,7 +586,7 @@ private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
 private fun PersonaSlide(s: WrappedSummary) {
     val st = LocalHomeStyle.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Eyebrow("Bu ay sen")
+        Eyebrow(t("Bu ay sen"))
         if (st.symbols) Text(emojiOf(s.persona.kind), style = TextStyle(fontSize = 72.sp), modifier = Modifier.popIn())
         Text(s.persona.title, style = big(st, 54), maxLines = 1, modifier = Modifier.popIn(120))
         Spacer(Modifier.height(8.dp))
@@ -602,7 +603,7 @@ private fun ChangeSlide(s: WrappedSummary) {
     val st = LocalHomeStyle.current
     val p = s.changePercent
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Eyebrow("Geçen aya göre")
+        Eyebrow(t("Geçen aya göre"))
         if (p != null) {
             val sign = when {
                 p > 0 -> "+"
@@ -610,29 +611,29 @@ private fun ChangeSlide(s: WrappedSummary) {
                 else -> ""
             }
             Text(
-                "$sign%${abs(p)}",
+                t("{0}%{1}", sign, abs(p)),
                 style = if (p >= 0) big(st, 92, st.accentBrush, st.accent) else big(st, 92),
                 modifier = Modifier.popIn(60),
             )
             Text(
                 when {
-                    p > 0 -> "daha fazla izledin"
-                    p < 0 -> "daha az izledin"
-                    else -> "aynı kadar izledin"
+                    p > 0 -> t("daha fazla izledin")
+                    p < 0 -> t("daha az izledin")
+                    else -> t("aynı kadar izledin")
                 },
                 style = st.type(18.sp, color = st.textBody),
             )
         } else {
             Spacer(Modifier.height(6.dp))
             Text(
-                "Karşılaştırma için önceki ay verisi yok",
+                t("Karşılaştırma için önceki ay verisi yok"),
                 style = st.type(20.sp, color = st.textBody),
             )
         }
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(36.dp)) {
-            SmallStat("Farklı uygulama", "${s.distinctApps}")
-            SmallStat("Aktif gün", "${s.activeDays}")
+            SmallStat(t("Farklı uygulama"), "${s.distinctApps}")
+            SmallStat(t("Aktif gün"), "${s.activeDays}")
         }
     }
 }

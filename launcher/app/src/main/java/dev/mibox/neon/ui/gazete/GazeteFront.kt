@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 private val HourFmt = DateTimeFormatter.ofPattern("HH:mm", TR)
 private val DateFmt = DateTimeFormatter.ofPattern("d MMMM yyyy, EEEE", TR)
@@ -106,8 +107,8 @@ internal fun TopStrip(nav: GazeteNav, actions: HomeActions, onOpenDizin: () -> U
     Row(Modifier.fillMaxWidth().height(24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         GreetingText()
         Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
-            GazeteLink(nav, K_TOP_TEMA, "Tema", actions.onOpenThemePicker)
-            GazeteLink(nav, K_TOP_DIZIN, "Dizin", onOpenDizin, arrow = ArrowDir.RIGHT)
+            GazeteLink(nav, K_TOP_TEMA, t("Tema"), actions.onOpenThemePicker)
+            GazeteLink(nav, K_TOP_DIZIN, t("Dizin"), onOpenDizin, arrow = ArrowDir.RIGHT)
         }
     }
 }
@@ -160,7 +161,7 @@ private fun ClockEar(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav
         actions.onOpenControl()
     }) {
         Column {
-            Text(st.caps("Saat"), style = st.lab(12f), color = st.accent, maxLines = 1)
+            Text(st.caps(t("Saat")), style = st.lab(12f), color = st.accent, maxLines = 1)
             Text(
                 now.format(HourFmt),
                 style = st.play(if (compact) 28f else 32f).copy(lineHeight = (if (compact) 30 else 34).sp),
@@ -198,7 +199,7 @@ private fun WeatherBox(vm: LauncherViewModel, actions: HomeActions, nav: GazeteN
             )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.widthIn(max = 140.dp)) {
-                Text(st.caps("Hava"), style = st.lab(12f), color = st.accent, maxLines = 1)
+                Text(st.caps(t("Hava")), style = st.lab(12f), color = st.accent, maxLines = 1)
                 if (condition.isNotBlank()) Text(condition, style = st.serif(13f), color = st.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(city.name, style = st.serif(13f), color = st.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -216,7 +217,7 @@ internal fun IssueLine(vm: LauncherViewModel, pageNo: Int) {
     val w = weather
     val middle = buildString {
         append(now.format(DateFmt))
-        append("  ·  Sayı ").append(now.dayOfYear)
+        append(t("  ·  Sayı ")).append(now.dayOfYear)
         if (w != null) {
             append("  ·  ").append(city.name).append(' ').append(w.tempC.roundToInt()).append('°')
             val c = Weather.describe(w.code, w.isDay).second
@@ -227,9 +228,9 @@ internal fun IssueLine(vm: LauncherViewModel, pageNo: Int) {
     Column(Modifier.fillMaxWidth()) {
         HairRule()
         Row(Modifier.fillMaxWidth().height(20.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(st.caps(if (st.night) "Akşam baskısı" else "Sabah baskısı"), style = style, color = st.accent, maxLines = 1)
+            Text(st.caps(if (st.night) t("Akşam baskısı") else t("Sabah baskısı")), style = style, color = st.accent, maxLines = 1)
             Text(st.caps(middle), style = style, color = st.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).padding(horizontal = 12.dp))
-            Text(st.caps("Sayfa $pageNo"), style = style, color = st.text, maxLines = 1)
+            Text(st.caps(t("Sayfa {0}", pageNo)), style = style, color = st.text, maxLines = 1)
         }
         DoubleRule()
     }
@@ -271,12 +272,12 @@ private fun LiveBody(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav
 // --- Manşet ----------------------------------------------------------------------------------------
 
 private fun bylineFor(kind: HeadlineKind, night: Boolean): String = when (kind) {
-    HeadlineKind.MATCH_LIVE, HeadlineKind.MATCH_RESULT, HeadlineKind.MATCH_TODAY, HeadlineKind.MATCH_UPCOMING -> "Spor servisi"
-    HeadlineKind.CONTINUE -> "Yayın servisi"
-    HeadlineKind.PREDICTED -> "Alışkanlık"
-    HeadlineKind.LAST_USED -> "Son kullanılan"
-    HeadlineKind.APP -> "Uygulamalar"
-    HeadlineKind.GREETING -> if (night) "Akşam baskısı" else "Sabah baskısı"
+    HeadlineKind.MATCH_LIVE, HeadlineKind.MATCH_RESULT, HeadlineKind.MATCH_TODAY, HeadlineKind.MATCH_UPCOMING -> t("Spor servisi")
+    HeadlineKind.CONTINUE -> t("Yayın servisi")
+    HeadlineKind.PREDICTED -> t("Alışkanlık")
+    HeadlineKind.LAST_USED -> t("Son kullanılan")
+    HeadlineKind.APP -> t("Uygulamalar")
+    HeadlineKind.GREETING -> if (night) t("Akşam baskısı") else t("Sabah baskısı")
 }
 
 /** OK on a lead story: the VM launches it; a match with no match app set opens the match panel instead. */
@@ -337,7 +338,7 @@ private fun Manset(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav, 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                st.caps("Manşet"),
+                st.caps(t("Manşet")),
                 style = st.lab(12f),
                 color = st.onAccent,
                 modifier = Modifier.background(st.accent2).padding(horizontal = 7.dp, vertical = 1.dp),
@@ -358,7 +359,7 @@ private fun Manset(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav, 
             )
             ActionButton(
                 nav,
-                label = h.action.ifEmpty { "Dizini aç" },
+                label = h.action.ifEmpty { t("Dizini aç") },
                 onClick = { act(vm, actions, h.target, onOpenDizin) },
                 props = props,
                 big = false,
@@ -380,7 +381,7 @@ private fun LiveManset(vm: LauncherViewModel, actions: HomeActions, nav: GazeteN
         } else {
             val team = MatchConfig.Team.name
             val names = if (m.home) "$team – ${m.opponent}" else "${m.opponent} – $team"
-            listOf(names, m.competition, if (m.home) "iç saha" else "deplasman").filter { it.isNotBlank() }.joinToString(" · ")
+            listOf(names, m.competition, if (m.home) t("iç saha") else "deplasman").filter { it.isNotBlank() }.joinToString(" · ")
         }
     }
     val line = st.divider
@@ -411,10 +412,10 @@ private fun LiveManset(vm: LauncherViewModel, actions: HomeActions, nav: GazeteN
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(st.caps("Spor servisi"), style = st.lab(13f, FontWeight.SemiBold), color = st.textMuted, maxLines = 1)
+                Text(st.caps(t("Spor servisi")), style = st.lab(13f, FontWeight.SemiBold), color = st.textMuted, maxLines = 1)
                 ActionButton(
                     nav,
-                    label = h.action.ifEmpty { "Maçı aç" },
+                    label = h.action.ifEmpty { t("Maçı aç") },
                     onClick = { act(vm, actions, h.target, {}) },
                     props = { up = nav.requester(K_WEATHER) },
                     big = true,
@@ -437,7 +438,7 @@ private fun SporBlock(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNa
     // The card already is that result: do not say it twice
     val showLast = enabled && last != null && !(m is MatchState.Finished && m.kickoffMs == last.kickoffMs)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        SectionHeader("Spor")
+        SectionHeader(t("Spor"))
         GazeteItem(
             nav, K_SPOR, onClick = actions.onOpenMatch,
             modifier = Modifier.fillMaxWidth().focusProperties { right = nav.requester(K_MAN) },
@@ -445,10 +446,10 @@ private fun SporBlock(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNa
             Column(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
                 when {
                     m != null -> MatchLines(m)
-                    enabled -> Text("Yaklaşan maç yok.", style = st.play(14f, italic = true), color = st.textMuted)
+                    enabled -> Text(t("Yaklaşan maç yok."), style = st.play(14f, italic = true), color = st.textMuted)
                     else -> {
-                        Text("Maç günü kapalı.", style = st.play(14f, italic = true), color = st.textMuted)
-                        Text("Açmak için Tamam'a bas.", style = st.serif(12f), color = st.textMuted)
+                        Text(t("Maç günü kapalı."), style = st.play(14f, italic = true), color = st.textMuted)
+                        Text(t("Açmak için Tamam'a bas."), style = st.serif(12f), color = st.textMuted)
                     }
                 }
                 if (showLast) {
@@ -470,14 +471,14 @@ private fun LastResultLines(r: MatchState.Finished) {
     val opponent = st.clean(r.opponent)
     val line = if (r.home) "$team ${r.gsScore}–${r.oppScore} $opponent" else "$opponent ${r.oppScore}–${r.gsScore} $team"
     val kind = when (r.result) {
-        MatchResult.WIN -> "galibiyeti"
-        MatchResult.DRAW -> "beraberliği"
-        MatchResult.LOSS -> "mağlubiyeti"
+        MatchResult.WIN -> t("galibiyeti")
+        MatchResult.DRAW -> t("beraberliği")
+        MatchResult.LOSS -> t("mağlubiyeti")
     }
     val date = r.kickoff.format(DayFmt)
-    val note = "${if (r.home) "İç saha" else "Deplasman"} $kind"
+    val note = t("{0} {1}", if (r.home) t("İç saha") else t("Deplasman"), kind)
     Text(
-        st.caps(listOf("Son sonuç", r.competition).filter { it.isNotBlank() }.joinToString(" · ")),
+        st.caps(listOf(t("Son sonuç"), r.competition).filter { it.isNotBlank() }.joinToString(" · ")),
         style = st.lab(12f),
         color = st.textMuted,
         maxLines = 1,
@@ -501,10 +502,10 @@ private fun MatchLines(m: MatchState) {
     }
     val head = when (m) {
         is MatchState.Upcoming -> listOf(m.competition, m.kickoff.format(KickFmt))
-        is MatchState.Live -> listOf("Canlı", m.clock, m.status)
-        is MatchState.Finished -> listOf("Maç sonucu", m.competition)
+        is MatchState.Live -> listOf(t("Canlı"), m.clock, m.status)
+        is MatchState.Finished -> listOf(t("Maç sonucu"), m.competition)
     }.filter { it.isNotBlank() }.joinToString(" · ")
-    val side = if (m.home) "İç saha" else "Deplasman"
+    val side = if (m.home) t("İç saha") else t("Deplasman")
     val team = MatchConfig.Team.name
     val opponent = st.clean(m.opponent)
     val names = if (m.home) "$team – $opponent" else "$opponent – $team"
@@ -519,9 +520,9 @@ private fun MatchLines(m: MatchState) {
     when (m) {
         is MatchState.Finished -> {
             val (word, color) = when (m.result) {
-                MatchResult.WIN -> "Galibiyet" to st.ok
-                MatchResult.DRAW -> "Beraberlik" to st.warn
-                MatchResult.LOSS -> "Mağlubiyet" to st.danger
+                MatchResult.WIN -> t("Galibiyet") to st.ok
+                MatchResult.DRAW -> t("Beraberlik") to st.warn
+                MatchResult.LOSS -> t("Mağlubiyet") to st.danger
             }
             Text("$word · $side", style = st.serif(13f, FontWeight.SemiBold), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(names, style = st.serif(12f), color = st.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -571,10 +572,10 @@ private fun LightCell(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNa
     val wiz by vm.wiz.collectAsStateWithLifecycle()
     val w = wiz
     val value = when {
-        ip == null -> "Işık bul"
-        w == null -> "Bağlı"
-        w.on -> "Açık · %${w.dimming}"
-        else -> "Kapalı"
+        ip == null -> t("Işık bul")
+        w == null -> t("Bağlı")
+        w.on -> t("Açık · %{0}", w.dimming)
+        else -> t("Kapalı")
     }
     GazeteItem(
         nav, K_LIGHT,
@@ -585,7 +586,7 @@ private fun LightCell(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNa
         modifier = modifier,
         onLongClick = if (ip != null) ({ vm.wizQuick() }) else null,
     ) {
-        KunyeCell("WiZ ışık", value, compact, link = ip == null)
+        KunyeCell(t("WiZ ışık"), value, compact, link = ip == null)
     }
 }
 
@@ -598,14 +599,14 @@ private fun SpeedCell(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNa
     // The value stays a short single line; the verdict goes on the muted line below it
     val verdict = if (net.verdict == NetVerdict.UNKNOWN) null else verdictText(net.verdict)
     val value = when (s) {
-        SpeedState.Idle -> last?.let { "${fmtMbps(it.mbps)} Mbps" } ?: "Hız testi"
-        is SpeedState.Running -> if (s.mbps == 0.0) "Ölçülüyor…" else "${fmtMbps(s.mbps)} Mbps"
+        SpeedState.Idle -> last?.let { "${fmtMbps(it.mbps)} Mbps" } ?: t("Hız testi")
+        is SpeedState.Running -> if (s.mbps == 0.0) t("Ölçülüyor…") else "${fmtMbps(s.mbps)} Mbps"
         is SpeedState.Done -> "${fmtMbps(s.mbps)} Mbps"
-        SpeedState.Failed -> "Bağlantı yok"
+        SpeedState.Failed -> t("Bağlantı yok")
     }
     val showVerdict = verdict != null && (s is SpeedState.Done || (s == SpeedState.Idle && last != null))
     GazeteItem(nav, K_SPEED, onClick = { vm.runSpeedTest() }, modifier = modifier, onLongClick = actions.onOpenNet) {
-        KunyeCell("Hız", value, compact, link = last == null && s == SpeedState.Idle, hint = if (showVerdict) verdict else null)
+        KunyeCell(t("Hız"), value, compact, link = last == null && s == SpeedState.Idle, hint = if (showVerdict) verdict else null)
     }
 }
 
@@ -616,8 +617,8 @@ private fun RamCell(vm: LauncherViewModel, nav: GazeteNav, compact: Boolean, mod
     val f = freed
     GazeteItem(nav, K_RAM, onClick = { vm.boost() }, modifier = modifier) {
         KunyeCell(
-            "RAM %${ram.usedPercent}",
-            if (f != null) "+${f / (1024 * 1024)} MB" else "Boşalt",
+            t("RAM %{0}", ram.usedPercent),
+            if (f != null) "+${f / (1024 * 1024)} MB" else t("Boşalt"),
             compact,
             link = f == null,
         )
@@ -627,7 +628,7 @@ private fun RamCell(vm: LauncherViewModel, nav: GazeteNav, compact: Boolean, mod
 @Composable
 private fun GearCell(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav, compact: Boolean, modifier: Modifier) {
     GazeteItem(nav, K_GEAR, onClick = { vm.openSystemSettings() }, modifier = modifier, onLongClick = actions.onOpenMenu) {
-        KunyeCell("Ayarlar", "Sistem", compact, link = true, hint = "Uzun bas: menü")
+        KunyeCell(t("Ayarlar"), t("Sistem"), compact, link = true, hint = t("Uzun bas: menü"))
     }
 }
 
@@ -637,7 +638,7 @@ private fun KunyeBox(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav
     val st = LocalHomeStyle.current
     val cell = Modifier.fillMaxWidth()
     Column(Modifier.fillMaxWidth().border(1.dp, st.text).padding(horizontal = 12.dp, vertical = 7.dp)) {
-        Text(st.caps("Künye"), style = st.lab(12f), color = st.accent, maxLines = 1)
+        Text(st.caps(t("Künye")), style = st.lab(12f), color = st.accent, maxLines = 1)
         Spacer(Modifier.height(2.dp))
         HairRule()
         Spacer(Modifier.height(3.dp))
@@ -682,9 +683,9 @@ private fun WatchSection(
         val limit = if (condensed) ((maxHeight - 26.dp) / 60.dp).toInt().coerceIn(1, count) else count
         val items = remember(watch, limit) { watch.take(limit) }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            SectionHeader("Kaldığın yerden")
+            SectionHeader(t("Kaldığın yerden"))
             if (items.isEmpty()) {
-                if (loaded) EmptyLine("Bugün kaldığın bir yer yok.")
+                if (loaded) EmptyLine(t("Bugün kaldığın bir yer yok."))
             } else if (condensed) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (item in items) {
@@ -740,7 +741,7 @@ private fun WatchCard(
                 if (pct != null) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ProgressBar(pct / 100f, Modifier.weight(1f))
-                        Text("%$pct izlendi", style = st.lab(12f, FontWeight.SemiBold), color = st.text, maxLines = 1)
+                        Text(t("%{0} izlendi", pct), style = st.lab(12f, FontWeight.SemiBold), color = st.text, maxLines = 1)
                     }
                 }
             } else {
@@ -749,7 +750,7 @@ private fun WatchCard(
                 if (pct != null) {
                     Spacer(Modifier.height(4.dp))
                     ProgressBar(pct / 100f)
-                    Text("%$pct izlendi", style = st.lab(12f, FontWeight.SemiBold), color = st.text, maxLines = 1)
+                    Text(t("%{0} izlendi", pct), style = st.lab(12f, FontWeight.SemiBold), color = st.text, maxLines = 1)
                 }
             }
         }
@@ -766,9 +767,9 @@ private fun EditorSection(vm: LauncherViewModel, actions: HomeActions, nav: Gaze
         val limit = ((maxHeight - 26.dp) / itemH).toInt().coerceIn(1, count)
         val items = remember(forYou, limit) { forYou.take(limit) }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            SectionHeader("Editörün seçimi")
+            SectionHeader(t("Editörün seçimi"))
             if (items.isEmpty()) {
-                if (loaded) EmptyLine("Şimdilik öneri yok.")
+                if (loaded) EmptyLine(t("Şimdilik öneri yok."))
             } else {
                 items.forEachIndexed { i, item -> key(item.id) { EditorRow(vm, actions, nav, item, i + 1, if (condensed) 2 else 3) } }
             }
@@ -779,7 +780,7 @@ private fun EditorSection(vm: LauncherViewModel, actions: HomeActions, nav: Gaze
 @Composable
 private fun EditorRow(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav, item: WatchItem, number: Int, titleLines: Int) {
     val st = LocalHomeStyle.current
-    val kicker = remember(item.pkg, st) { st.clean(vm.appFor(item.pkg)?.label.orEmpty()).let { if (it.isBlank()) "Senin için" else "$it · Senin için" } }
+    val kicker = remember(item.pkg, st) { st.clean(vm.appFor(item.pkg)?.label.orEmpty()).let { if (it.isBlank()) t("Senin için") else t("{0} · Senin için", it) } }
     val title = remember(item, st) { st.clean(item.title) }
     val story = remember(item) { GazeteStory.Item(item) }
     GazeteItem(
@@ -819,11 +820,11 @@ private fun FavoritesStrip(vm: LauncherViewModel, actions: HomeActions, nav: Gaz
         DoubleRule()
         Row(Modifier.fillMaxWidth().height(60.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.width(104.dp)) {
-                Text(st.caps("Favoriler"), style = st.lab(12f), color = st.accent, maxLines = 1)
-                Text("Sabitlediklerin", style = st.play(14f, italic = true), color = st.text, maxLines = 1)
+                Text(st.caps(t("Favoriler")), style = st.lab(12f), color = st.accent, maxLines = 1)
+                Text(t("Sabitlediklerin"), style = st.play(14f, italic = true), color = st.text, maxLines = 1)
             }
             if (cards.isEmpty()) {
-                EmptyLine("Henüz sabitlenmiş bir şey yok.", Modifier.weight(1f))
+                EmptyLine(t("Henüz sabitlenmiş bir şey yok."), Modifier.weight(1f))
             } else {
                 LazyRow(
                     modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -841,7 +842,7 @@ private fun FavoritesStrip(vm: LauncherViewModel, actions: HomeActions, nav: Gaz
             Spacer(Modifier.width(8.dp))
             GazeteItem(nav, K_FAV_DIZIN, onClick = onOpenDizin, modifier = Modifier.width(82.dp).height(46.dp), fill = st.text) {
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                    Text(st.caps("Dizin"), style = st.lab(16f), color = st.background, maxLines = 1)
+                    Text(st.caps(t("Dizin")), style = st.lab(16f), color = st.background, maxLines = 1)
                     Spacer(Modifier.width(6.dp))
                     Arrow(st.background)
                 }
@@ -866,7 +867,7 @@ private fun FavCard(vm: LauncherViewModel, actions: HomeActions, nav: GazeteNav,
         },
     )
     val sub = when (card) {
-        is FavoriteCard.App -> if (pageOf > 0) "s. $pageOf" else ""
+        is FavoriteCard.App -> if (pageOf > 0) t("s. {0}", pageOf) else ""
         is FavoriteCard.Content -> st.clean(card.app.label)
     }
     GazeteItem(

@@ -37,6 +37,7 @@ import androidx.tv.material3.Typography
 import dev.mibox.neon.R
 import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.NetVerdict
+import dev.mibox.neon.i18n.t
 
 // --- Fonts -------------------------------------------------------------------------------------
 // Neon uses Poppins (Theme.kt). Weights not listed here resolve to the nearest listed one.

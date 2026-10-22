@@ -40,6 +40,7 @@ import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.Wiz
 import dev.mibox.neon.data.WizPilot
 import kotlinx.coroutines.delay
+import dev.mibox.neon.i18n.t
 
 private val PanelShape = RoundedCornerShape(28.dp)
 
@@ -48,7 +49,7 @@ private val Swatches = listOf(
     Color(0xFF22C55E), Color(0xFFFACC15), Color(0xFFF97316), Color(0xFFEF4444),
 )
 
-private val Whites = listOf(2700 to "Sıcak", 4000 to "Nötr", 6500 to "Gün ışığı")
+private val Whites = listOf(2700 to t("Sıcak"), 4000 to t("Nötr"), 6500 to t("Gün ışığı"))
 
 @Composable
 fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
@@ -72,22 +73,22 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(st.plain("💡  Arka ışık"), style = st.headline.fillWith(st.accentBrush, st.titleColor))
+                Text(st.plain(t("💡  Arka ışık")), style = st.headline.fillWith(st.accentBrush, st.titleColor))
                 Spacer(Modifier.width(14.dp))
                 Text(status(ip, wiz), style = st.body, color = st.textDim)
             }
 
             if (ip == null) {
                 Text(
-                    "WiZ Sync Box ağda bulunamadı. Box ile aynı Wi-Fi'da olduğundan ve WiZ uygulamasında " +
-                        "\"Yerel iletişime izin ver\" seçeneğinin açık olduğundan emin ol.",
+                    t("WiZ Sync Box ağda bulunamadı. Box ile aynı Wi-Fi'da olduğundan ve WiZ uygulamasında ") +
+                        t("\"Yerel iletişime izin ver\" seçeneğinin açık olduğundan emin ol."),
                     style = st.body,
                 )
-                Chip("Tekrar ara", onClick = vm::wizRefresh, leading = "🔍", modifier = Modifier.focusRequester(first))
+                Chip(t("Tekrar ara"), onClick = vm::wizRefresh, leading = "🔍", modifier = Modifier.focusRequester(first))
                 return@Column
             }
 
-            Section("Hızlı erişim")
+            Section(t("Hızlı erişim"))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(vertical = 6.dp, horizontal = 4.dp),
@@ -105,37 +106,37 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Chip(
-                    if (wiz?.on == true) "Kapat" else "Aç",
+                    if (wiz?.on == true) t("Kapat") else t("Aç"),
                     onClick = vm::wizToggle,
                     leading = "⏻",
                     primary = wiz?.on != true,
                     modifier = if (favorites.isEmpty()) Modifier.focusRequester(first) else Modifier,
                 )
-                Chip("Önceki ışık", onClick = vm::wizBackToPrevious, leading = "↩")
-                Chip(if (ambient) "Ambiyans açık" else "Ambiyans kapalı", onClick = vm::wizToggleAmbient, leading = "✨")
+                Chip(t("Önceki ışık"), onClick = vm::wizBackToPrevious, leading = "↩")
+                Chip(if (ambient) t("Ambiyans açık") else t("Ambiyans kapalı"), onClick = vm::wizToggleAmbient, leading = "✨")
                 Chip(sleepLabel(sleepAt), onClick = vm::wizCycleSleep, leading = "🌙")
-                Chip("Hava ışığı", onClick = vm::wizWeather, leading = "⛅")
+                Chip(t("Hava ışığı"), onClick = vm::wizWeather, leading = "⛅")
             }
 
-            Section("Parlaklık")
+            Section(t("Parlaklık"))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Chip("", onClick = { vm.wizDim(-10) }, leading = "−")
                 BrightnessBar((wiz?.dimming ?: 0) / 100f)
                 Chip("", onClick = { vm.wizDim(10) }, leading = "+")
-                Text("%${wiz?.dimming ?: 0}", style = st.item)
+                Text(t("%{0}", wiz?.dimming ?: 0), style = st.item)
             }
 
-            Section("Renk")
+            Section(t("Renk"))
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Swatches.forEach { c -> Swatch(c) { vm.wizColor(c) } }
             }
 
-            Section("Beyaz")
+            Section(t("Beyaz"))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Whites.forEach { (k, name) -> Chip("$name · ${k}K", onClick = { vm.wizWhite(k) }) }
             }
 
-            Section("Sahneler  ·  uzun bas: hızlı erişime ekle / çıkar")
+            Section(t("Sahneler  ·  uzun bas: hızlı erişime ekle / çıkar"))
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(vertical = 6.dp, horizontal = 4.dp),
@@ -152,7 +153,7 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
             }
 
             if ((wiz?.sceneId ?: 0) > 0) {
-                Section("Efekt hızı")
+                Section(t("Efekt hızı"))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Chip("", onClick = { vm.wizSpeed(-20) }, leading = "−")
                     BrightnessBar((wiz?.speed ?: 100) / 200f)
@@ -212,16 +213,16 @@ private fun FocusLater(requester: FocusRequester) {
 }
 
 private fun status(ip: String?, p: WizPilot?): String = when {
-    ip == null -> "Bulunamadı"
-    p == null -> "Bağlanıyor… $ip"
-    !p.on -> "Kapalı"
-    p.sceneId > 0 -> "Açık · %${p.dimming} · ${Wiz.sceneName(p.sceneId) ?: "Sahne ${p.sceneId}"}"
-    p.temp > 0 -> "Açık · %${p.dimming} · ${p.temp}K"
-    else -> "Açık · %${p.dimming} · Renk"
+    ip == null -> t("Bulunamadı")
+    p == null -> t("Bağlanıyor… {0}", ip)
+    !p.on -> t("Kapalı")
+    p.sceneId > 0 -> t("Açık · %{0} · {1}", p.dimming, Wiz.sceneName(p.sceneId) ?: t("Sahne {0}", p.sceneId))
+    p.temp > 0 -> t("Açık · %{0} · {1}", p.dimming, "${p.temp}K")
+    else -> t("Açık · %{0} · {1}", p.dimming, t("Renk"))
 }
 
 private fun sleepLabel(at: Long?): String {
-    if (at == null) return "Uyku kapalı"
+    if (at == null) return t("Uyku kapalı")
     val min = ((at - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
-    return "Uyku $min dk"
+    return t("Uyku {0} dk", min)
 }

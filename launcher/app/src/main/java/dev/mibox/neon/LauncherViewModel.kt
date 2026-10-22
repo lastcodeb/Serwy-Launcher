@@ -93,6 +93,7 @@ import java.time.LocalTime
 import java.time.YearMonth
 import java.time.ZoneId
 import java.util.Collections
+import dev.mibox.neon.i18n.t
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = AppRepository(app)
@@ -633,15 +634,15 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                     getApplication<Application>().packageManager.getApplicationInfo(pkg, 0).category
                 }.getOrNull()
                 when (cat) {
-                    android.content.pm.ApplicationInfo.CATEGORY_GAME -> "Oyun"
-                    android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "Müzik"
-                    android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> "Video"
-                    android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> "Fotoğraf"
-                    android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "Sosyal"
-                    android.content.pm.ApplicationInfo.CATEGORY_NEWS -> "Haber"
-                    android.content.pm.ApplicationInfo.CATEGORY_MAPS -> "Harita"
-                    android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Araçlar"
-                    android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Erişilebilirlik"
+                    android.content.pm.ApplicationInfo.CATEGORY_GAME -> t("Oyun")
+                    android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> t("Müzik")
+                    android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> t("Video")
+                    android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> t("Fotoğraf")
+                    android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> t("Sosyal")
+                    android.content.pm.ApplicationInfo.CATEGORY_NEWS -> t("Haber")
+                    android.content.pm.ApplicationInfo.CATEGORY_MAPS -> t("Harita")
+                    android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> t("Araçlar")
+                    android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY -> t("Erişilebilirlik")
                     else -> null
                 }
             }.also { categories[pkg] = it }

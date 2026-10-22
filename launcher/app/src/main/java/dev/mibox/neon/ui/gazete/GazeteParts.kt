@@ -65,6 +65,7 @@ import dev.mibox.neon.ui.NeonSurface
 import dev.mibox.neon.ui.TextRole
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 // --- Focus keys --------------------------------------------------------------------------------
 // Every focusable of the home owns one FocusRequester, looked up by these keys in GazeteNav.
@@ -413,10 +414,10 @@ internal fun GazeteLink(
 // --- Small formatting helpers --------------------------------------------------------------------
 
 internal fun greetingFor(hour: Int): String = when (hour) {
-    in 5..10 -> "Günaydın"
-    in 11..17 -> "İyi günler"
-    in 18..21 -> "İyi akşamlar"
-    else -> "İyi geceler"
+    in 5..10 -> t("Günaydın")
+    in 11..17 -> t("İyi günler")
+    in 18..21 -> t("İyi akşamlar")
+    else -> t("İyi geceler")
 }
 
 /** "2. Sezon 5. Bölüm", "5. Bölüm", else the episode title or the app's subtitle; null for movies. */
@@ -425,8 +426,8 @@ internal fun episodeLine(item: WatchItem): String? {
     val s = num(item.season)
     val e = num(item.episode)
     return when {
-        s != null && e != null -> "$s. Sezon $e. Bölüm"
-        e != null -> "$e. Bölüm"
+        s != null && e != null -> t("{0}. Sezon {1}. Bölüm", s, e)
+        e != null -> t("{0}. Bölüm", e)
         else -> item.episodeTitle?.takeIf { it.isNotBlank() } ?: item.subtitle?.takeIf { it.isNotBlank() }
     }
 }

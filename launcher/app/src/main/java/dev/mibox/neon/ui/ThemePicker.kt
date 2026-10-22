@@ -39,20 +39,21 @@ import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.GazeteEdition
 import dev.mibox.neon.data.HomeTheme
 import kotlinx.coroutines.delay
+import dev.mibox.neon.i18n.t
 
 private val PreviewW = 160.dp
 private val PreviewH = 90.dp
 
 private fun nameOf(t: HomeTheme) = when (t) {
     HomeTheme.NEON -> "Neon"
-    HomeTheme.GAZETE -> "Gazete"
+    HomeTheme.GAZETE -> t("Gazete")
     HomeTheme.TELETEXT -> "Teletext"
 }
 
 private fun blurbOf(t: HomeTheme) = when (t) {
-    HomeTheme.NEON -> "Renkli, parlak, cam gibi"
-    HomeTheme.GAZETE -> "Manşet ve sütunlarla gazete sayfası"
-    HomeTheme.TELETEXT -> "90'lar teletekst sayfası"
+    HomeTheme.NEON -> t("Renkli, parlak, cam gibi")
+    HomeTheme.GAZETE -> t("Manşet ve sütunlarla gazete sayfası")
+    HomeTheme.TELETEXT -> t("90'lar teletekst sayfası")
 }
 
 /**
@@ -81,7 +82,7 @@ fun ThemePicker(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Text("Tema", style = st.headline.fillWith(st.accentBrush, st.titleColor))
+            Text(t("Tema"), style = st.headline.fillWith(st.accentBrush, st.titleColor))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HomeTheme.values().forEach { t ->
                     ThemeOption(
@@ -98,17 +99,17 @@ fun ThemePicker(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 }
             }
             if (editionShown) {
-                Text(st.caps("Gazete baskısı"), style = st.label, color = st.textDim)
+                Text(st.caps(t("Gazete baskısı")), style = st.label, color = st.textDim)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val toCard = Modifier.focusProperties { up = gazeteCard }
-                    EditionChip("Otomatik (gün batımına göre)", edition == GazeteEdition.AUTO, toCard.focusRequester(editionFirst)) {
+                    EditionChip(t("Otomatik (gün batımına göre)"), edition == GazeteEdition.AUTO, toCard.focusRequester(editionFirst)) {
                         vm.setGazeteEdition(GazeteEdition.AUTO)
                     }
-                    EditionChip("Gündüz", edition == GazeteEdition.DAY, toCard) { vm.setGazeteEdition(GazeteEdition.DAY) }
-                    EditionChip("Gece", edition == GazeteEdition.NIGHT, toCard) { vm.setGazeteEdition(GazeteEdition.NIGHT) }
+                    EditionChip(t("Gündüz"), edition == GazeteEdition.DAY, toCard) { vm.setGazeteEdition(GazeteEdition.DAY) }
+                    EditionChip(t("Gece"), edition == GazeteEdition.NIGHT, toCard) { vm.setGazeteEdition(GazeteEdition.NIGHT) }
                 }
             }
-            Chip("Kapat", onClick = onDismiss, modifier = Modifier.focusRequester(closeButton))
+            Chip(t("Kapat"), onClick = onDismiss, modifier = Modifier.focusRequester(closeButton))
         }
     }
 
@@ -193,7 +194,7 @@ private fun NeonPreview() {
             style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, fontWeight = FontWeight.Black, brush = Neon.TitleBrush),
         )
         Text(
-            "— İyi akşamlar",
+            t("— İyi akşamlar"),
             modifier = Modifier.padding(start = 8.dp, top = 16.dp),
             style = TextStyle(fontFamily = Poppins, fontSize = 5.sp, color = Neon.Greeting),
         )
@@ -243,12 +244,12 @@ private fun GazetePreview(night: Boolean) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Box(Modifier.size(width = 20.dp, height = 2.dp).background(red))
                     Text(
-                        "Pazartesi derbi",
+                        t("Pazartesi derbi"),
                         style = TextStyle(fontFamily = Playfair, fontSize = 10.sp, fontWeight = FontWeight.Black, color = ink),
                         maxLines = 1,
                     )
                     Text(
-                        "GS – FEN, 20.30",
+                        t("GS – FB, 20.30"),
                         style = TextStyle(fontFamily = SourceSerif, fontSize = 6.sp, color = muted),
                         maxLines = 1,
                     )
@@ -268,17 +269,17 @@ private fun TeletextPreview() {
             Text("P100 NEON 100", style = line.copy(fontSize = 9.sp), maxLines = 1)
         }
         Box(Modifier.fillMaxWidth().height(9.dp).background(t.Yellow).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
-            Text("MANSET", style = line.copy(color = t.Black, fontSize = 8.sp), maxLines = 1)
+            Text(t("MANSET"), style = line.copy(color = t.Black, fontSize = 8.sp), maxLines = 1)
         }
         Box(Modifier.fillMaxWidth().height(14.dp).background(t.Red).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
-            Text("PAZARTESİ DERBİ 20.30", style = line.copy(fontSize = 11.sp), maxLines = 1)
+            Text(t("PAZARTESİ DERBİ 20.30"), style = line.copy(fontSize = 11.sp), maxLines = 1)
         }
         Column(Modifier.weight(1f).padding(horizontal = 4.dp, vertical = 2.dp)) {
-            Text("Genelde bu saatte: YouTube", style = line.copy(color = t.Cyan, fontSize = 8.sp), maxLines = 1)
+            Text(t("Genelde bu saatte: YouTube"), style = line.copy(color = t.Cyan, fontSize = 8.sp), maxLines = 1)
             Row(Modifier.background(t.White).padding(horizontal = 2.dp)) {
-                Text("300  Spor", style = line.copy(color = t.Black, fontSize = 8.sp), maxLines = 1)
+                Text(t("300  Spor"), style = line.copy(color = t.Black, fontSize = 8.sp), maxLines = 1)
             }
-            Text("200  Devam et", style = line.copy(fontSize = 8.sp), maxLines = 1)
+            Text(t("200  Devam et"), style = line.copy(fontSize = 8.sp), maxLines = 1)
         }
         Row(Modifier.fillMaxWidth().height(8.dp)) {
             listOf(t.Red, t.Green, t.Yellow, t.Blue).forEach { Box(Modifier.weight(1f).fillMaxSize().background(it)) }

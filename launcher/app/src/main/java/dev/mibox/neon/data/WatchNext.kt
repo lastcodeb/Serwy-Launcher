@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.runtime.Immutable
+import dev.mibox.neon.i18n.t
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -84,7 +85,7 @@ object WatchNext {
                 val episode = str("episode_display_number")
                 val episodeTitle = str("episode_title")
                 val subtitle = listOfNotNull(
-                    if (season != null && episode != null) "S$season · B$episode" else episode?.let { "B$it" },
+                    if (season != null && episode != null) t("S{0} · B{1}", season, episode) else episode?.let { t("B{0}", it) },
                     episodeTitle,
                 ).joinToString("  ·  ").ifEmpty { null }
                 val pos = num("last_playback_position_millis")

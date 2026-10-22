@@ -21,6 +21,7 @@ import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.pow
+import dev.mibox.neon.i18n.t
 
 @Immutable
 data class AppUsage(val pkg: String, val label: String, val hours: Double, val share: Double)
@@ -262,24 +263,24 @@ class UsageHistory(private val ctx: Context) {
     private fun persona(m: MonthData, top: List<AppUsage>, distinct: Int): Persona {
         val total = m.total.toDouble()
         val topApp = top.firstOrNull()
-        if (total / HOUR_MS < 3.0) return Persona(PersonaKind.LIGHT, "Hafif izleyici", "Bu ay televizyon pek açılmadı.")
+        if (total / HOUR_MS < 3.0) return Persona(PersonaKind.LIGHT, t("Hafif izleyici"), t("Bu ay televizyon pek açılmadı."))
         if (topApp != null && topApp.share >= 0.60) {
-            return Persona(PersonaKind.LOYALIST, "Sadık izleyici", "Zamanının %${(topApp.share * 100).toInt()}'ini ${topApp.label} ile geçirdin.")
+            return Persona(PersonaKind.LOYALIST, t("Sadık izleyici"), t("Zamanının %{0}'ini {1} ile geçirdin.", (topApp.share * 100).toInt(), topApp.label))
         }
         val h = m.byHour
         if (h != null) {
             val night = (h[22] + h[23] + h[0] + h[1] + h[2] + h[3]) / total
-            if (night >= 0.40) return Persona(PersonaKind.NIGHT_OWL, "Gece kuşu", "İzlemenin %${(night * 100).toInt()}'i saat 22'den sonra.")
+            if (night >= 0.40) return Persona(PersonaKind.NIGHT_OWL, t("Gece kuşu"), t("İzlemenin %{0}'i saat 22'den sonra.", (night * 100).toInt()))
             val morning = (5..11).sumOf { h[it] } / total
-            if (morning >= 0.30) return Persona(PersonaKind.EARLY_BIRD, "Sabahçı", "İzlemenin %${(morning * 100).toInt()}'i sabah 5 ile öğlen arasında.")
+            if (morning >= 0.30) return Persona(PersonaKind.EARLY_BIRD, t("Sabahçı"), t("İzlemenin %{0}'i sabah 5 ile öğlen arasında.", (morning * 100).toInt()))
         }
         val w = m.byWeekday
         if (w != null) {
             val weekend = (w[5] + w[6]) / total
-            if (weekend >= 0.45) return Persona(PersonaKind.WEEKEND_MARATHONER, "Hafta sonu maratoncusu", "İzlemenin %${(weekend * 100).toInt()}'i cumartesi ve pazar günleri.")
+            if (weekend >= 0.45) return Persona(PersonaKind.WEEKEND_MARATHONER, t("Hafta sonu maratoncusu"), t("İzlemenin %{0}'i cumartesi ve pazar günleri.", (weekend * 100).toInt()))
         }
-        if (distinct >= 12) return Persona(PersonaKind.EXPLORER, "Kaşif", "Bu ay $distinct farklı uygulama açtın.")
-        return Persona(PersonaKind.BALANCED, "Dengeli izleyici", "Zamanını birkaç uygulamaya dengeli dağıttın.")
+        if (distinct >= 12) return Persona(PersonaKind.EXPLORER, t("Kaşif"), t("Bu ay {0} farklı uygulama açtın.", distinct))
+        return Persona(PersonaKind.BALANCED, t("Dengeli izleyici"), t("Zamanını birkaç uygulamaya dengeli dağıttın."))
     }
 
     // --- event scanning --------------------------------------------------------------------

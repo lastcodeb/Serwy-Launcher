@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.i18n.t
 
 /** What the hero shows: the focused app or episode, the last used app, or a favorite slide. */
 @Immutable
@@ -79,8 +80,8 @@ fun Hero(content: HeroContent) {
 }
 
 private fun greeting(hour: Int) = when (hour) {
-    in 5..11 -> "Günaydın"
-    in 12..17 -> "İyi günler"
-    in 18..21 -> "İyi akşamlar"
-    else -> "İyi geceler"
+    in 5..11 -> t("Günaydın")
+    in 12..17 -> t("İyi günler")
+    in 18..21 -> t("İyi akşamlar")
+    else -> t("İyi geceler")
 }

@@ -8,6 +8,7 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.SocketTimeoutException
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 /** Snapshot of a WiZ light as getPilot reports it. */
 @Immutable
@@ -60,13 +61,13 @@ object Wiz {
     const val MIN_DIM = 10 // getModelConfig.minDimLevel of the SYBX sync box
 
     val Scenes: List<Pair<Int, String>> = listOf(
-        1 to "Okyanus", 2 to "Romantik", 3 to "Gün batımı", 4 to "Parti", 5 to "Şömine",
-        6 to "Sıcacık", 7 to "Orman", 8 to "Pastel", 9 to "Uyanış", 10 to "Yatma vakti",
-        11 to "Sıcak beyaz", 12 to "Gün ışığı", 13 to "Soğuk beyaz", 14 to "Gece lambası",
-        15 to "Odak", 16 to "Rahatla", 17 to "Gerçek renkler", 18 to "TV zamanı",
-        19 to "Bitki", 20 to "İlkbahar", 21 to "Yaz", 22 to "Sonbahar", 23 to "Derinlik",
-        24 to "Tropik", 25 to "Mojito", 26 to "Kulüp", 27 to "Yılbaşı", 28 to "Cadılar bayramı",
-        29 to "Mum ışığı", 30 to "Altın beyaz", 31 to "Nabız", 32 to "Steampunk",
+        1 to t("Okyanus"), 2 to t("Romantik"), 3 to t("Gün batımı"), 4 to t("Parti"), 5 to t("Şömine"),
+        6 to t("Sıcacık"), 7 to t("Orman"), 8 to t("Pastel"), 9 to t("Uyanış"), 10 to t("Yatma vakti"),
+        11 to t("Sıcak beyaz"), 12 to t("Gün ışığı"), 13 to t("Soğuk beyaz"), 14 to t("Gece lambası"),
+        15 to t("Odak"), 16 to t("Rahatla"), 17 to t("Gerçek renkler"), 18 to t("TV zamanı"),
+        19 to t("Bitki"), 20 to t("İlkbahar"), 21 to t("Yaz"), 22 to t("Sonbahar"), 23 to t("Derinlik"),
+        24 to t("Tropik"), 25 to "Mojito", 26 to t("Kulüp"), 27 to t("Yılbaşı"), 28 to t("Cadılar bayramı"),
+        29 to t("Mum ışığı"), 30 to t("Altın beyaz"), 31 to t("Nabız"), 32 to "Steampunk",
     )
 
     fun sceneName(id: Int): String? = Scenes.firstOrNull { it.first == id }?.second
@@ -77,8 +78,8 @@ object Wiz {
     val BuiltInPresets = listOf("film", "mac")
 
     fun presetName(id: String): String = when (id) {
-        "film" -> "Film"
-        "mac" -> "Maç"
+        "film" -> t("Film")
+        "mac" -> t("Maç")
         else -> sceneId(id)?.let(::sceneName) ?: id
     }
 

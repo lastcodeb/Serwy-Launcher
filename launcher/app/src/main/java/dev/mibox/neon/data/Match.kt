@@ -12,6 +12,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import dev.mibox.neon.i18n.t
 
 /** The team the match-day feature follows. Change this one value to follow another club. */
 @Immutable
@@ -24,6 +25,29 @@ data class TeamSpec(
     val secondary: Color,
 )
 
+/**
+ * The abbreviations Turkish fans and broadcasters use. ESPN's own ("FEN", "GAL", "KNY") read as
+ * noise on a Turkish screen; anything not listed here keeps ESPN's code.
+ */
+object TeamCodes {
+    private val Turkish = mapOf(
+        "Galatasaray" to "GS", "Fenerbahçe" to "FB", "Beşiktaş" to "BJK", "Trabzonspor" to "TS",
+        "Başakşehir" to "İBFK", "Göztepe" to "GÖZ", "Kasımpaşa" to "KSP", "Eyüpspor" to "EYP",
+        "Çaykur Rizespor" to "ÇRS", "Gençlerbirliği" to "GB", "Fatih Karagümrük" to "FKG",
+        "Kocaelispor" to "KOC", "Gaziantep FK" to "GFK", "Kayserispor" to "KAY", "Konyaspor" to "KON",
+        "Samsunspor" to "SAM", "Alanyaspor" to "ALA", "Antalyaspor" to "ANT", "Sivasspor" to "SİV",
+        "Hatayspor" to "HAT", "Adana Demirspor" to "ADS", "Ankaragücü" to "ANK", "Bodrum FK" to "BOD",
+        "Pendikspor" to "PEN", "İstanbulspor" to "İST",
+    )
+
+    /** [name] is the Turkish-spelled club name (see [MatchSource.turkishName]). */
+    fun short(name: String, espnCode: String): String = Turkish[name] ?: espnCode
+
+    /** ESPN's crest for a team id, resized server side to 128 px (~8 KB instead of ~55 KB). */
+    fun logoUrl(espnId: String): String =
+        "https://a.espncdn.com/combiner/i?img=/i/teamlogos/soccer/500/$espnId.png&w=128&h=128"
+}
+
 /** A competition ESPN's public API covers, by league slug. */
 @Immutable
 data class Competition(val slug: String, val label: String)
@@ -34,9 +58,9 @@ object MatchConfig {
     /** Checked against ESPN: the Turkish Cup (Ziraat Türkiye Kupası) has no ESPN league, so it is absent. */
     val Competitions = listOf(
         Competition("tur.1", "Süper Lig"),
-        Competition("uefa.champions", "Şampiyonlar Ligi"),
-        Competition("uefa.europa", "UEFA Avrupa Ligi"),
-        Competition("uefa.europa.conf", "Konferans Ligi"),
+        Competition("uefa.champions", t("Şampiyonlar Ligi")),
+        Competition("uefa.europa", t("UEFA Avrupa Ligi")),
+        Competition("uefa.europa.conf", t("Konferans Ligi")),
     )
 
     /** Choices for the broadcast delay setting, in seconds. */
@@ -84,6 +108,8 @@ data class Fixture(
     val clock: String,
     val gs: Int?,
     val opp: Int?,
+    /** ESPN team id of the opponent, for its crest; empty in caches written before it existed. */
+    val opponentId: String = "",
 )
 
 /** What the match card shows. Scores are always from the followed team's point of view. */
@@ -92,6 +118,9 @@ sealed interface MatchState {
     val opponentShort: String
     val competition: String
     val kickoffMs: Long
+
+    /** ESPN team id of the opponent (for [TeamCodes.logoUrl]); may be empty. */
+    val opponentId: String
 
     /** Kickoff in the box's own time zone. */
     val kickoff: ZonedDateTime get() = Instant.ofEpochMilli(kickoffMs).atZone(ZoneId.systemDefault())
@@ -106,6 +135,7 @@ sealed interface MatchState {
         override val competition: String,
         override val kickoffMs: Long,
         override val home: Boolean,
+        override val opponentId: String = "",
     ) : MatchState
 
     /** [clock] is ESPN's display clock ("63'", "45'+2'"), [status] a Turkish phase name ("2. Yarı"). */
@@ -120,6 +150,7 @@ sealed interface MatchState {
         val oppScore: Int,
         val clock: String,
         val status: String,
+        override val opponentId: String = "",
     ) : MatchState
 
     @Immutable
@@ -132,6 +163,7 @@ sealed interface MatchState {
         val gsScore: Int,
         val oppScore: Int,
         val result: MatchResult,
+        override val opponentId: String = "",
     ) : MatchState
 }
 
@@ -139,11 +171,11 @@ sealed interface MatchState {
 object MatchSamples {
     private val now get() = System.currentTimeMillis()
 
-    fun upcoming() = MatchState.Upcoming("Fenerbahçe", "FEN", "Süper Lig", now + 3 * 3_600_000L, home = true)
+    fun upcoming() = MatchState.Upcoming("Fenerbahçe", "FB", "Süper Lig", now + 3 * 3_600_000L, home = true, opponentId = "436")
 
-    fun live() = MatchState.Live("Fenerbahçe", "FEN", "Süper Lig", now - 63 * 60_000L, true, 2, 1, "63'", "2. Yarı")
+    fun live() = MatchState.Live("Fenerbahçe", "FB", "Süper Lig", now - 63 * 60_000L, true, 2, 1, "63'", t("2. Yarı"), opponentId = "436")
 
-    fun finished() = MatchState.Finished("Fenerbahçe", "FEN", "Süper Lig", now - 3 * 3_600_000L, true, 3, 1, MatchResult.WIN)
+    fun finished() = MatchState.Finished("Fenerbahçe", "FB", "Süper Lig", now - 3 * 3_600_000L, true, 3, 1, MatchResult.WIN, opponentId = "436")
 }
 
 /** A snapshot from the scoreboard: enough to tell what changed since the previous poll. */
@@ -226,6 +258,7 @@ object MatchSource {
             else -> MatchPhase.PRE
         }
         val opp = them.optJSONObject("team")
+        val oppName = turkishName(opp?.optString("displayName").orEmpty().ifEmpty { t("Rakip") })
         val kickoff = runCatching {
             // ESPN writes "2026-10-26T18:30Z" (no seconds)
             LocalDateTime.parse(e.getString("date").removeSuffix("Z")).toInstant(ZoneOffset.UTC).toEpochMilli()
@@ -236,13 +269,14 @@ object MatchSource {
             competition = comp.label,
             kickoffMs = kickoff,
             home = us.optString("homeAway") == "home",
-            opponent = turkishName(opp?.optString("displayName").orEmpty().ifEmpty { "Rakip" }),
-            opponentShort = opp?.optString("abbreviation").orEmpty(),
+            opponent = oppName,
+            opponentShort = TeamCodes.short(oppName, opp?.optString("abbreviation").orEmpty()),
             phase = phase,
             statusName = name,
             clock = status?.optString("displayClock").orEmpty(),
             gs = score(us),
             opp = score(them),
+            opponentId = opp?.optString("id").orEmpty().ifEmpty { them.optString("id") },
         )
     }
 
@@ -280,13 +314,13 @@ object MatchSource {
 
     /** Turkish name of a live phase. */
     fun statusText(statusName: String): String = when {
-        "HALFTIME" in statusName -> "Devre arası"
-        "FIRST_HALF" in statusName -> "1. Yarı"
-        "SECOND_HALF" in statusName -> "2. Yarı"
-        "EXTRA" in statusName -> "Uzatma"
-        "PENALT" in statusName || "SHOOTOUT" in statusName -> "Penaltılar"
-        "DELAY" in statusName -> "Gecikmeli"
-        else -> "Canlı"
+        "HALFTIME" in statusName -> t("Devre arası")
+        "FIRST_HALF" in statusName -> t("1. Yarı")
+        "SECOND_HALF" in statusName -> t("2. Yarı")
+        "EXTRA" in statusName -> t("Uzatma")
+        "PENALT" in statusName || "SHOOTOUT" in statusName -> t("Penaltılar")
+        "DELAY" in statusName -> t("Gecikmeli")
+        else -> t("Canlı")
     }
 
     /** The card for [now]: live beats a recent result, which beats the next fixture; null when nothing is known. */
@@ -300,11 +334,11 @@ object MatchSource {
         return null
     }
 
-    fun upcoming(f: Fixture) = MatchState.Upcoming(f.opponent, f.opponentShort, f.competition, f.kickoffMs, f.home)
+    fun upcoming(f: Fixture) = MatchState.Upcoming(f.opponent, f.opponentShort, f.competition, f.kickoffMs, f.home, f.opponentId)
 
     fun live(f: Fixture) = MatchState.Live(
         f.opponent, f.opponentShort, f.competition, f.kickoffMs, f.home,
-        f.gs ?: 0, f.opp ?: 0, f.clock, statusText(f.statusName),
+        f.gs ?: 0, f.opp ?: 0, f.clock, statusText(f.statusName), f.opponentId,
     )
 
     fun finished(f: Fixture): MatchState.Finished {
@@ -315,7 +349,7 @@ object MatchSource {
             gs < opp -> MatchResult.LOSS
             else -> MatchResult.DRAW
         }
-        return MatchState.Finished(f.opponent, f.opponentShort, f.competition, f.kickoffMs, f.home, gs, opp, result)
+        return MatchState.Finished(f.opponent, f.opponentShort, f.competition, f.kickoffMs, f.home, gs, opp, result, f.opponentId)
     }
 
     private const val DAY_MS = 24L * 60 * 60 * 1000
@@ -347,11 +381,14 @@ class MatchStore(ctx: Context) {
         val a = JSONArray(sp.getString("fixtures", "[]"))
         (0 until a.length()).map { i ->
             val o = a.getJSONObject(i)
+            val opp = MatchSource.turkishName(o.getString("opp"))
             Fixture(
                 o.getString("id"), o.getString("slug"), o.getString("comp"), o.getLong("ko"), o.getBoolean("home"),
-                MatchSource.turkishName(o.getString("opp")), o.getString("oppShort"), MatchPhase.valueOf(o.getString("phase")),
+                // Caches from older builds hold ESPN's code ("FEN"): map it on the way in
+                opp, TeamCodes.short(opp, o.getString("oppShort")), MatchPhase.valueOf(o.getString("phase")),
                 o.optString("status"), o.optString("clock"),
                 if (o.has("gs")) o.getInt("gs") else null, if (o.has("os")) o.getInt("os") else null,
+                o.optString("oppId"),
             )
         }
     }.getOrDefault(emptyList())
@@ -367,7 +404,7 @@ class MatchStore(ctx: Context) {
         for (f in keep) {
             a.put(
                 JSONObject().put("id", f.eventId).put("slug", f.slug).put("comp", f.competition).put("ko", f.kickoffMs)
-                    .put("home", f.home).put("opp", f.opponent).put("oppShort", f.opponentShort)
+                    .put("home", f.home).put("opp", f.opponent).put("oppShort", f.opponentShort).put("oppId", f.opponentId)
                     .put("phase", f.phase.name).put("status", f.statusName).put("clock", f.clock)
                     .apply {
                         f.gs?.let { put("gs", it) }

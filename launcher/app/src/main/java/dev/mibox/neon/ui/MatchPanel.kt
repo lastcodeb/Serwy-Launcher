@@ -57,7 +57,15 @@ import dev.mibox.neon.data.MatchResult
 import dev.mibox.neon.data.MatchSamples
 import dev.mibox.neon.data.MatchState
 import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import dev.mibox.neon.data.TeamLogos
+import dev.mibox.neon.i18n.t
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -79,31 +87,31 @@ private fun countdown(ms: Long): String {
     val h = min / 60
     val mm = min % 60
     return when {
-        h == 0L -> "$mm dk"
-        mm == 0L -> "$h sa"
-        else -> "$h sa $mm dk"
+        h == 0L -> t("{0} dk", mm)
+        mm == 0L -> t("{0} sa", h)
+        else -> t("{0} sa {1} dk", h, mm)
     }
 }
 
 /** Countdown in the last 6 hours, then "Bugün 21:30", "Yarın 21:30", "Pzt 21:30" (6 days) or "26 Eki 21:30". */
 private fun upcomingWhen(m: MatchState.Upcoming, nowMs: Long): String {
     val left = m.kickoffMs - nowMs
-    if (left <= 0) return "Başlıyor"
+    if (left <= 0) return t("Başlıyor")
     if (left <= COUNTDOWN_MS) return countdown(left)
     val today = Instant.ofEpochMilli(nowMs).atZone(m.kickoff.zone).toLocalDate()
     val days = ChronoUnit.DAYS.between(today, m.kickoff.toLocalDate())
     return when {
-        days <= 0L -> "Bugün " + m.kickoff.format(HourFmt)
-        days == 1L -> "Yarın " + m.kickoff.format(HourFmt)
+        days <= 0L -> t("Bugün ") + m.kickoff.format(HourFmt)
+        days == 1L -> t("Yarın ") + m.kickoff.format(HourFmt)
         days <= 6L -> m.kickoff.format(KickFmt)
         else -> m.kickoff.format(DayMonFmt)
     }
 }
 
 private fun resultText(r: MatchResult) = when (r) {
-    MatchResult.WIN -> "Galibiyet"
-    MatchResult.DRAW -> "Beraberlik"
-    MatchResult.LOSS -> "Mağlubiyet"
+    MatchResult.WIN -> t("Galibiyet")
+    MatchResult.DRAW -> t("Beraberlik")
+    MatchResult.LOSS -> t("Mağlubiyet")
 }
 
 private fun resultColor(r: MatchResult, st: HomeStyle) = when (r) {
@@ -130,57 +138,73 @@ private fun PulseDot() {
     )
 }
 
+/** A club crest from ESPN, loaded once per process; an empty box until (or unless) it arrives. */
+@Composable
+fun TeamLogo(espnId: String, size: Dp, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    val img by produceState<ImageBitmap?>(null, espnId) { value = TeamLogos.get(ctx, espnId) }
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        img?.let { Image(it, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
+    }
+}
+
+/** Home side first, like a stadium board: ESPN ids (for crests) and the fans' abbreviations. */
+private class Sides(val homeId: String, val homeCode: String, val awayId: String, val awayCode: String)
+
+private fun sides(m: MatchState): Sides {
+    val us = MatchConfig.Team
+    return if (m.home) Sides(us.espnId, us.shortName, m.opponentId, oppShort(m)) else Sides(m.opponentId, oppShort(m), us.espnId, us.shortName)
+}
+
 /**
- * Permanent top bar chip while match day is on: a red/yellow accent (which already says
- * Galatasaray), then "FEN · Bugün 21:30" / "GS 2–1 FEN · 67'" (with a pulsing dot) /
- * "GS 4–2 LIL · Galibiyet", or "Yaklaşan maç yok" while [m] is null. Kept narrow for the 864dp bar.
+ * Permanent top bar chip while match day is on, home side first with both crests:
+ * "[GS] GS – FB [FB] · Pzt 20:30", live "[GS] GS 2–1 FB [FB] ● 67'", finished "… · Galibiyet",
+ * or "Yaklaşan maç yok" while [m] is null.
  */
 @Composable
 fun MatchChip(m: MatchState?, nowMs: Long, onOpen: () -> Unit) {
     val team = MatchConfig.Team
     val st = LocalHomeStyle.current
-    val style = st.bar(11.sp, FontWeight.SemiBold)
+    val code = st.bar(12.sp, FontWeight.Bold)
+    val info = st.bar(11.sp, FontWeight.SemiBold, st.textSoft)
     NeonSurface(
         onClick = onOpen,
-        modifier = Modifier.height(35.dp).widthIn(max = 170.dp),
+        modifier = Modifier.height(35.dp).widthIn(max = 250.dp),
         glowColor = team.primary,
         container = team.primary.copy(alpha = if (m is MatchState.Live) 0.24f else 0.12f),
         focusedContainer = team.primary.copy(alpha = 0.36f),
         stroke = team.primary.copy(alpha = 0.6f),
     ) {
         Row(
-            Modifier.fillMaxHeight().padding(start = 9.dp, end = 10.dp),
+            Modifier.fillMaxHeight().padding(start = 8.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Red over yellow
-            Column(Modifier.size(width = 4.dp, height = 17.dp).clip(st.chipShape)) {
-                Box(Modifier.weight(1f).fillMaxWidth().background(team.primary))
-                Box(Modifier.weight(1f).fillMaxWidth().background(team.secondary))
+            if (m == null) {
+                TeamLogo(team.espnId, 20.dp)
+                Spacer(Modifier.width(7.dp))
+                Text(t("Yaklaşan maç yok"), style = info, maxLines = 1)
+                return@Row
             }
+            val s = sides(m)
+            val middle = when (m) {
+                is MatchState.Upcoming -> " – "
+                is MatchState.Live -> score(m, m.gsScore, m.oppScore, compact = true)
+                is MatchState.Finished -> score(m, m.gsScore, m.oppScore, compact = true)
+            }
+            TeamLogo(s.homeId, 20.dp)
             Spacer(Modifier.width(6.dp))
+            Text(s.homeCode + middle + s.awayCode, style = code, maxLines = 1)
+            Spacer(Modifier.width(6.dp))
+            TeamLogo(s.awayId, 20.dp)
+            Spacer(Modifier.width(8.dp))
             when (m) {
-                null -> Text("Yaklaşan maç yok", style = style.copy(color = st.textSoft), maxLines = 1)
-                is MatchState.Upcoming -> Text(
-                    "${oppShort(m)} · ${upcomingWhen(m, nowMs)}",
-                    style = style,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                is MatchState.Upcoming -> Text(upcomingWhen(m, nowMs), style = info, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 is MatchState.Live -> {
                     PulseDot()
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        "${team.shortName} ${m.gsScore}–${m.oppScore} ${oppShort(m)}" +
-                            (m.clock.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
-                        style = style,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(m.clock.ifBlank { m.status }, style = info.copy(color = LiveRed), maxLines = 1)
                 }
-                is MatchState.Finished -> {
-                    Text("${team.shortName} ${m.gsScore}–${m.oppScore} ${oppShort(m)} · ", style = style, maxLines = 1)
-                    Text(resultText(m.result), style = style.copy(color = resultColor(m.result, st)), maxLines = 1)
-                }
+                is MatchState.Finished -> Text(resultText(m.result), style = info.copy(color = resultColor(m.result, st)), maxLines = 1)
             }
         }
     }
@@ -227,20 +251,20 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (picking) {
-                Text(st.plain("📺  Maç uygulaması"), style = st.headline)
+                Text(st.plain(t("📺  Maç uygulaması")), style = st.headline)
                 Text(
-                    if (launchAfterPick) "Seçtiğin uygulamada maçı açarım" else "Maçı izlediğin uygulamayı seç",
+                    if (launchAfterPick) t("Seçtiğin uygulamada maçı açarım") else t("Maçı izlediğin uygulamayı seç"),
                     style = st.body,
                     color = st.textDim,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Chip(
-                        "Geri",
+                        t("Geri"),
                         onClick = closePicker,
                         leading = "←",
                         modifier = Modifier.focusRequester(first),
                     )
-                    Chip("Seçimi kaldır", onClick = { vm.setMatchApp(null); closePicker() })
+                    Chip(t("Seçimi kaldır"), onClick = { vm.setMatchApp(null); closePicker() })
                 }
                 LazyColumn(
                     Modifier.heightIn(max = 270.dp),
@@ -272,27 +296,27 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                         }
                     }
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Section("Ayarlar")
+                        Section(t("Ayarlar"))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Chip(
-                                "Işıklar: " + if (enabled) "Açık" else "Kapalı",
+                                t("Işıklar: ") + if (enabled) t("Açık") else t("Kapalı"),
                                 onClick = { vm.setMatchEnabled(!enabled) },
                                 leading = "💡",
                                 primary = enabled,
                             )
                             Chip(
-                                "Gol efekti: " + if (goalEffect) "Açık" else "Kapalı",
+                                t("Gol efekti: ") + if (goalEffect) t("Açık") else t("Kapalı"),
                                 onClick = { vm.setMatchGoalEffect(!goalEffect) },
                                 leading = "🎆",
                                 primary = goalEffect,
                             )
                         }
                         Chip(
-                            "Gol efektini dene",
+                            t("Gol efektini dene"),
                             onClick = {
                                 Toast.makeText(
                                     context.applicationContext,
-                                    if (wizIp != null) "Gol efekti oynatılıyor" else "Işık bulunamadı — önce Işık bul",
+                                    if (wizIp != null) t("Gol efekti oynatılıyor") else t("Işık bulunamadı — önce Işık bul"),
                                     Toast.LENGTH_SHORT,
                                 ).show()
                                 vm.testGoalEffect()
@@ -300,19 +324,19 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                             leading = "⚡",
                         )
 
-                        Section("Yayın gecikmesi (sn)")
+                        Section(t("Yayın gecikmesi (sn)"))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             MatchConfig.DelayOptions.forEach { s ->
                                 Chip("$s", onClick = { vm.setMatchDelay(s) }, primary = s == delaySec)
                             }
                         }
                         Text(
-                            "Yayın geç kalıyorsa ışık golü ekrandan önce göstermesin diye bekler.",
+                            t("Yayın geç kalıyorsa ışık golü ekrandan önce göstermesin diye bekler."),
                             style = st.type(11.sp, color = st.textMuted),
                         )
 
-                        Section("Maçı izlediğim uygulama")
-                        val appLabel = appPkg?.let { p -> apps.firstOrNull { it.pkg == p }?.label ?: "Yüklü değil" } ?: "Seçilmedi"
+                        Section(t("Maçı izlediğim uygulama"))
+                        val appLabel = appPkg?.let { p -> apps.firstOrNull { it.pkg == p }?.label ?: t("Yüklü değil") } ?: t("Seçilmedi")
                         Chip(
                             appLabel,
                             onClick = { launchAfterPick = false; picking = true },
@@ -320,12 +344,12 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                             modifier = Modifier.focusRequester(appBtn),
                         )
 
-                        Section("Önizleme")
+                        Section(t("Önizleme"))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Chip("Yaklaşan", onClick = { vm.simulateMatch(MatchSamples.upcoming()) })
-                            Chip("Canlı", onClick = { vm.simulateMatch(MatchSamples.live()) })
-                            Chip("Bitti", onClick = { vm.simulateMatch(MatchSamples.finished()) })
-                            Chip("Gerçek", onClick = { vm.simulateMatch(null) }, leading = "↩")
+                            Chip(t("Yaklaşan"), onClick = { vm.simulateMatch(MatchSamples.upcoming()) })
+                            Chip(t("Canlı"), onClick = { vm.simulateMatch(MatchSamples.live()) })
+                            Chip(t("Bitti"), onClick = { vm.simulateMatch(MatchSamples.finished()) })
+                            Chip(t("Gerçek"), onClick = { vm.simulateMatch(null) }, leading = "↩")
                         }
                     }
                 }
@@ -350,7 +374,7 @@ private fun MatchLeft(
     val st = LocalHomeStyle.current
     // The team's red-to-yellow gradient is Neon's; the others set the title flat
     Text(
-        st.plain("⚽  Maç günü"),
+        st.plain(t("⚽  Maç günü")),
         style = st.headline.fillWith(
             if (st.theme == HomeTheme.NEON) Brush.horizontalGradient(listOf(red, yellow)) else null,
             st.titleColor,
@@ -371,22 +395,22 @@ private fun MatchLeft(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text("Yaklaşan maç yok", style = st.type(18.sp, FontWeight.Bold, role = TextRole.HEADLINE))
+            Text(t("Yaklaşan maç yok"), style = st.type(18.sp, FontWeight.Bold, role = TextRole.HEADLINE))
             Text(
-                if (enabled) "Fikstür yüklenemedi ya da sezon arasındasın. Biraz sonra tekrar bakılır." else "Maç günü kapalı. Sağdan açabilirsin.",
+                if (enabled) t("Fikstür yüklenemedi ya da sezon arasındasın. Biraz sonra tekrar bakılır.") else t("Maç günü kapalı. Sağdan açabilirsin."),
                 style = st.type(12.sp, color = st.textDim),
             )
         }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Chip(
-            "Maçı aç",
+            t("Maçı aç"),
             onClick = { if (vm.launchMatchApp()) onDismiss() else onPickApp() },
             leading = "▶",
             primary = true,
             modifier = Modifier.focusRequester(first),
         )
-        Chip("Kapat", onClick = onDismiss)
+        Chip(t("Kapat"), onClick = onDismiss)
     }
 }
 
@@ -414,26 +438,28 @@ private fun Scoreboard(m: MatchState) {
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (m.home) {
-                TeamSide(team.shortName, team.name, true, Modifier.weight(1f))
+                TeamSide(team.espnId, team.shortName, team.name, true, Modifier.weight(1f))
                 Middle(m)
-                TeamSide(oppShort(m), m.opponent, false, Modifier.weight(1f))
+                TeamSide(m.opponentId, oppShort(m), m.opponent, false, Modifier.weight(1f))
             } else {
-                TeamSide(oppShort(m), m.opponent, false, Modifier.weight(1f))
+                TeamSide(m.opponentId, oppShort(m), m.opponent, false, Modifier.weight(1f))
                 Middle(m)
-                TeamSide(team.shortName, team.name, true, Modifier.weight(1f))
+                TeamSide(team.espnId, team.shortName, team.name, true, Modifier.weight(1f))
             }
         }
         Text(
-            "${m.competition} · ${if (m.home) "İç saha" else "Deplasman"}",
+            "${t(m.competition)} · ${if (m.home) t("İç saha") else t("Deplasman")}",
             style = st.type(12.sp, color = st.textDim),
         )
     }
 }
 
 @Composable
-private fun TeamSide(short: String, full: String, ours: Boolean, modifier: Modifier) {
+private fun TeamSide(logoId: String, short: String, full: String, ours: Boolean, modifier: Modifier) {
     val st = LocalHomeStyle.current
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        TeamLogo(logoId, 56.dp)
+        Spacer(Modifier.height(6.dp))
         Text(
             short,
             style = st.type(
@@ -454,7 +480,12 @@ private fun TeamSide(short: String, full: String, ours: Boolean, modifier: Modif
     }
 }
 
-private fun score(m: MatchState, gs: Int, opp: Int) = if (m.home) "$gs – $opp" else "$opp – $gs"
+/** Home side's goals first; [compact] for the chip ("2–1"), spaced for the scoreboard ("2 – 1"). */
+private fun score(m: MatchState, gs: Int, opp: Int, compact: Boolean = false): String {
+    val dash = if (compact) "–" else " – "
+    val pad = if (compact) " " else ""
+    return if (m.home) "$pad$gs$dash$opp$pad" else "$pad$opp$dash$gs$pad"
+}
 
 @Composable
 private fun Middle(m: MatchState) {
@@ -474,7 +505,7 @@ private fun Middle(m: MatchState) {
                     PulseDot()
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        "CANLI" + (m.clock.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
+                        t("CANLI") + (m.clock.takeIf { it.isNotBlank() }?.let { " · $it" } ?: ""),
                         style = small.copy(color = LiveRed, fontWeight = FontWeight.Bold),
                         maxLines = 1,
                     )
@@ -483,7 +514,7 @@ private fun Middle(m: MatchState) {
             }
             is MatchState.Finished -> {
                 Text(score(m, m.gsScore, m.oppScore), style = big, maxLines = 1)
-                Text("Maç bitti", style = small, maxLines = 1)
+                Text(t("Maç bitti"), style = small, maxLines = 1)
                 Text(resultText(m.result), style = small.copy(color = resultColor(m.result, st), fontWeight = FontWeight.Bold), maxLines = 1)
             }
         }

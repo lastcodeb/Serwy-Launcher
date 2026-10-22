@@ -33,6 +33,7 @@ import dev.mibox.neon.ui.TR
 import dev.mibox.neon.ui.rememberNow
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 /** "86,0": one decimal with a Turkish comma, like the Control Center. */
 private fun oneDecimal(mbps: Double): String = String.format(TR, "%.1f", mbps)
@@ -41,10 +42,10 @@ private val LongDate =DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", TR)
 
 /** Greeting by hour, the same bands as the headline engine (05-10, 11-17, 18-21, else night). */
 private fun greeting(hour: Int): String = when (hour) {
-    in 5..10 -> "Günaydın"
-    in 11..17 -> "İyi günler"
-    in 18..21 -> "İyi akşamlar"
-    else -> "İyi geceler"
+    in 5..10 -> t("Günaydın")
+    in 11..17 -> t("İyi günler")
+    in 18..21 -> t("İyi akşamlar")
+    else -> t("İyi geceler")
 }
 
 /** "2. Sezon 5. Bölüm", "5. Bölüm", the episode title, or null: only what the app published. */
@@ -52,8 +53,8 @@ internal fun ttEpisode(item: WatchItem): String? {
     val s = item.season?.trim().orEmpty()
     val e = item.episode?.trim().orEmpty()
     return when {
-        s.isNotEmpty() && e.isNotEmpty() -> "$s. Sezon $e. Bölüm"
-        e.isNotEmpty() -> "$e. Bölüm"
+        s.isNotEmpty() && e.isNotEmpty() -> t("{0}. Sezon {1}. Bölüm", s, e)
+        e.isNotEmpty() -> t("{0}. Bölüm", e)
         else -> item.episodeTitle?.trim()?.takeIf { it.isNotEmpty() }
     }
 }
@@ -64,7 +65,7 @@ internal fun TtHomePage(ctx: TtCtx) {
     Column(Modifier.fillMaxSize()) {
         TtHero(ctx.vm)
         TtHeadline(ctx)
-        TtBand("İndeks", "Sayfa", TtBlue, TtWhite, rightColor = TtYellow)
+        TtBand(t("İndeks"), t("Sayfa"), TtBlue, TtWhite, rightColor = TtYellow)
         Row(Modifier.fillMaxWidth()) {
             TtIndex(ctx, Modifier.weight(1f))
             Spacer(Modifier.width(28.dp))
@@ -84,7 +85,7 @@ private fun TtHero(vm: LauncherViewModel) {
     val city by vm.city.collectAsStateWithLifecycle()
     val w = weather
     val weatherLine = if (w == null) {
-        "${city.name} · hava bekleniyor"
+        t("{0} · hava bekleniyor", city.name)
     } else {
         "${city.name} · ${w.tempC.roundToInt()}°C ${Weather.describe(w.code, w.isDay).second}"
     }
@@ -98,7 +99,7 @@ private fun TtHero(vm: LauncherViewModel) {
             TtLine(greeting(now.hour), TtBlack, bg = TtMagenta, inset = 0.dp)
             TtLine(LongDate.format(now), TtCyan, inset = 0.dp)
             TtLine(weatherLine, TtYellow, inset = 0.dp)
-            TtLine("Sayfa no yaz ya da renkli tuşa bas", TtWhite, inset = 0.dp)
+            TtLine(t("Sayfa no yaz ya da renkli tuşa bas"), TtWhite, inset = 0.dp)
         }
     }
 }
@@ -149,11 +150,11 @@ private fun TtHeadline(ctx: TtCtx) {
                 val progress = h.progress
                 if (progress != null) {
                     TtBar(progress, Modifier.padding(start = 12.dp))
-                    TtText("%${(progress * 100).roundToInt()}", TtCyan, Modifier.padding(start = 8.dp))
+                    TtText(t("%{0}", (progress * 100).roundToInt()), TtCyan, Modifier.padding(start = 8.dp))
                 }
                 // The predicted app is its own headline when it leads; otherwise it is a quiet hint here
                 if (predicted != null && h.kind != HeadlineKind.PREDICTED) {
-                    TtText("Genelde bu saatte:", TtCyan, Modifier.padding(start = 16.dp))
+                    TtText(t("Genelde bu saatte:"), TtCyan, Modifier.padding(start = 16.dp))
                     Spacer(Modifier.width(8.dp))
                     TtText(predicted, TtYellow)
                 }
@@ -180,15 +181,15 @@ private fun TtHeadline(ctx: TtCtx) {
 private class IndexEntry(val key: String, val label: String)
 
 private val IndexEntries = listOf(
-    IndexEntry("200", "Kaldığın yerden"),
-    IndexEntry("300", "Spor"),
-    IndexEntry("400", "Hava"),
-    IndexEntry("450", "Ağ durumu"),
-    IndexEntry("500", "Uygulamalar"),
+    IndexEntry("200", t("Kaldığın yerden")),
+    IndexEntry("300", t("Spor")),
+    IndexEntry("400", t("Hava")),
+    IndexEntry("450", t("Ağ durumu")),
+    IndexEntry("500", t("Uygulamalar")),
     IndexEntry("600", "Neon Wrapped"),
-    IndexEntry("700", "Işık"),
-    IndexEntry("800", "Kontrol merkezi"),
-    IndexEntry("900", "Tema"),
+    IndexEntry("700", t("Işık")),
+    IndexEntry("800", t("Kontrol merkezi")),
+    IndexEntry("900", t("Tema")),
 )
 
 /** The İNDEKS: one row per page or tool, number on the right. */
@@ -244,7 +245,7 @@ private fun TtResumeBox(ctx: TtCtx) {
         focusOutline = TtWhite,
     ) {
         Column {
-            TtBand("Kaldığın yer", "200", TtGreen, TtBlack)
+            TtBand(t("Kaldığın yer"), "200", TtGreen, TtBlack)
             Row(Modifier.padding(start = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 TtMosaic(TtTv, 7.dp)
                 Spacer(Modifier.width(12.dp))
@@ -278,9 +279,9 @@ private fun TtFavorites(ctx: TtCtx) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val shown = cards.take(4)
     val numbers = shown.mapIndexed { i, c -> favNumber(c, i, apps.indexOfFirst { it.pkg == c.app.pkg }) }
-    TtBand("Favoriler", numbers.joinToString(" · "), TtCyan, TtBlack)
+    TtBand(t("Favoriler"), numbers.joinToString(" · "), TtCyan, TtBlack)
     if (shown.isEmpty()) {
-        TtLine("Favori yok · uygulamada uzun bas: Favorilere ekle", TtCyan)
+        TtLine(t("Favori yok · uygulamada uzun bas: Favorilere ekle"), TtCyan)
     } else {
         Row(
             Modifier.fillMaxWidth().height(TtRowH).padding(horizontal = 8.dp),
@@ -372,19 +373,19 @@ private fun TtStatusRow(ctx: TtCtx) {
         val lightColor: Color
         when {
             ip == null -> {
-                lightLabel = "Işık: bulunamadı"
+                lightLabel = t("Işık: bulunamadı")
                 lightColor = TtRed
             }
             pilot == null -> {
-                lightLabel = "Işık: bağlanıyor"
+                lightLabel = t("Işık: bağlanıyor")
                 lightColor = TtYellow
             }
             pilot.on -> {
-                lightLabel = "Işık: açık %${pilot.dimming}"
+                lightLabel = t("Işık: açık %{0}", pilot.dimming)
                 lightColor = TtGreen
             }
             else -> {
-                lightLabel = "Işık: kapalı"
+                lightLabel = t("Işık: kapalı")
                 lightColor = TtWhite
             }
         }
@@ -401,10 +402,10 @@ private fun TtStatusRow(ctx: TtCtx) {
         // Speed: OK runs the test, long press opens the network panel
         val last = net.last
         val speedLabel = when (val s = speed) {
-            is SpeedState.Running -> "Ölçülüyor ${oneDecimal(s.mbps)} Mbps"
-            is SpeedState.Done -> "Hız ${oneDecimal(s.mbps)} Mbps"
-            SpeedState.Failed -> "Hız: ölçülemedi"
-            SpeedState.Idle -> if (last != null) "Hız ${oneDecimal(last.mbps)} Mbps" else "Hız: ölçüm yok"
+            is SpeedState.Running -> t("Ölçülüyor {0} Mbps", oneDecimal(s.mbps))
+            is SpeedState.Done -> t("Hız {0} Mbps", oneDecimal(s.mbps))
+            SpeedState.Failed -> t("Hız: ölçülemedi")
+            SpeedState.Idle -> if (last != null) t("Hız {0} Mbps", oneDecimal(last.mbps)) else t("Hız: ölçüm yok")
         }
         TtStatusCell(
             label = speedLabel,
@@ -424,8 +425,8 @@ private fun TtStatusRow(ctx: TtCtx) {
         }
         val freedBytes = freed
         TtStatusCell(
-            label = "RAM %${ram.usedPercent}",
-            tag = if (freedBytes != null) "+${freedBytes / (1024 * 1024)} MB" else "[Boşalt]",
+            label = t("RAM %{0}", ram.usedPercent),
+            tag = if (freedBytes != null) "+${freedBytes / (1024 * 1024)} MB" else t("[Boşalt]"),
             color = ramColor,
             filled = false,
             modifier = Modifier.weight(1f),

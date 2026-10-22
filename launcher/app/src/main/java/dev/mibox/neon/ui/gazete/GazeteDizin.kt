@@ -38,6 +38,8 @@ import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppEntry
 import dev.mibox.neon.ui.HomeActions
 import dev.mibox.neon.ui.LocalHomeStyle
+import dev.mibox.neon.data.HeadlineEngine
+import dev.mibox.neon.i18n.t
 
 /**
  * The index ("Dizin"): every visible app as a newspaper index line, name, dotted leader and page
@@ -57,7 +59,7 @@ internal fun GazeteDizin(vm: LauncherViewModel, actions: HomeActions, nav: Gazet
     ) {
         Row(Modifier.fillMaxWidth().height(24.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             GreetingText()
-            GazeteLink(nav, K_BACK, "Ana sayfa", onBack, arrow = ArrowDir.LEFT, color = st.accent)
+            GazeteLink(nav, K_BACK, t("Ana sayfa"), onBack, arrow = ArrowDir.LEFT, color = st.accent)
         }
         Column(Modifier.fillMaxWidth()) {
             Box(Modifier.fillMaxWidth().height(2.5.dp).background(st.divider))
@@ -72,7 +74,7 @@ internal fun GazeteDizin(vm: LauncherViewModel, actions: HomeActions, nav: Gazet
                 )
                 Spacer(Modifier.width(20.dp))
                 Text(
-                    "Dizin",
+                    t("Dizin"),
                     modifier = Modifier.weight(1f),
                     style = st.playBlack(50f, italic = true).copy(lineHeight = 52.sp),
                     color = st.accent,
@@ -81,9 +83,9 @@ internal fun GazeteDizin(vm: LauncherViewModel, actions: HomeActions, nav: Gazet
                     overflow = TextOverflow.Visible,
                 )
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(st.caps("Tüm uygulamalar"), style = st.lab(12f), color = st.accent, maxLines = 1)
+                    Text(st.caps(t("Tüm uygulamalar")), style = st.lab(12f), color = st.accent, maxLines = 1)
                     Text(
-                        if (apps.isEmpty()) "Uygulama yok" else "${apps.size} uygulama · s. 1–${apps.size}",
+                        if (apps.isEmpty()) t("Uygulama yok") else t("{0} uygulama · s. 1–{0}", apps.size),
                         style = st.serif(13f),
                         color = st.text,
                         maxLines = 1,
@@ -110,7 +112,7 @@ internal fun GazeteDizin(vm: LauncherViewModel, actions: HomeActions, nav: Gazet
                 }
             }
         }
-        Text("Menü için bir uygulamaya uzun bas.", style = st.play(14f, italic = true), color = st.textMuted, maxLines = 1)
+        Text(t("Menü için bir uygulamaya uzun bas."), style = st.play(14f, italic = true), color = st.textMuted, maxLines = 1)
     }
 }
 
@@ -131,7 +133,7 @@ private fun DizinCell(
     val st = LocalHomeStyle.current
     val category = remember(app) { vm.categoryOf(app.pkg)?.takeIf { it.isNotBlank() } }
     // headlineFor's deck is "Son açılış: …" when the usage history knows the app (else a category, shown as the tag)
-    val info = remember(app) { vm.headlineFor(app).deck.takeIf { it.startsWith("Son açılış") }.orEmpty() }
+    val info = remember(app) { vm.headlineFor(app).deck.takeIf { it.startsWith(HeadlineEngine.lastOpenedPrefix()) }.orEmpty() }
     val label = remember(app, st) { st.clean(app.label) }
     val story = remember(app) { GazeteStory.Application(app) }
     val rule = remember(st) { st.divider.copy(alpha = 0.35f) }
@@ -159,7 +161,7 @@ private fun DizinCell(
                 Spacer(Modifier.width(8.dp))
                 Leader(st.text, Modifier.weight(1f).offset(y = 4.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("s. $number", style = st.lab(14f), color = st.text, maxLines = 1)
+                Text(t("s. {0}", number), style = st.lab(14f), color = st.text, maxLines = 1)
             }
             if (category != null || info.isNotBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

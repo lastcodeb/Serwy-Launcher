@@ -69,4 +69,6 @@ dependencies {
     implementation("androidx.media3:media3-database:1.4.1")
     // Installs the baseline profiles shipped with Compose for faster cold start
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

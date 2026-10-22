@@ -59,7 +59,7 @@ class AppRepository(private val ctx: Context) {
         }
         add(Intent.CATEGORY_LEANBACK_LAUNCHER, leanback = true)
         add(Intent.CATEGORY_LAUNCHER, leanback = false)
-        val collator = Collator.getInstance(Locale.forLanguageTag("tr-TR"))
+        val collator = Collator.getInstance(Locale.getDefault())
         return result.values.sortedWith { a, b -> collator.compare(a.label, b.label) }
     }
 

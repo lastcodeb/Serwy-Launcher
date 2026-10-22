@@ -11,6 +11,8 @@ import java.net.URLEncoder
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.util.Locale
+import dev.mibox.neon.i18n.I18n
+import dev.mibox.neon.i18n.t
 
 internal fun httpGet(url: String): String {
     val conn = URL(url).openConnection() as HttpURLConnection
@@ -61,21 +63,24 @@ object Weather {
         return LocalDateTime.parse(rise).toLocalTime() to LocalDateTime.parse(set).toLocalTime()
     }
 
-    /** WMO weather code -> emoji + Turkish description. */
+    /** WMO weather code -> emoji + description in the box's language. */
     fun describe(code: Int, isDay: Boolean): Pair<String, String> = when (code) {
-        0 -> (if (isDay) "☀️" else "🌙") to "Açık"
-        1 -> (if (isDay) "🌤️" else "🌙") to "Az bulutlu"
-        2 -> "⛅" to "Parçalı bulutlu"
-        3 -> "☁️" to "Kapalı"
-        45, 48 -> "🌫️" to "Sisli"
-        in 51..57 -> "🌦️" to "Çisenti"
-        in 61..67 -> "🌧️" to "Yağmurlu"
-        in 71..77 -> "🌨️" to "Karlı"
-        in 80..82 -> "🌧️" to "Sağanak"
-        85, 86 -> "🌨️" to "Kar sağanağı"
-        in 95..99 -> "⛈️" to "Fırtına"
+        0 -> (if (isDay) "☀️" else "🌙") to weatherWord("Açık", "Clear")
+        1 -> (if (isDay) "🌤️" else "🌙") to t("Az bulutlu")
+        2 -> "⛅" to t("Parçalı bulutlu")
+        3 -> "☁️" to weatherWord("Kapalı", "Overcast")
+        45, 48 -> "🌫️" to t("Sisli")
+        in 51..57 -> "🌦️" to t("Çisenti")
+        in 61..67 -> "🌧️" to t("Yağmurlu")
+        in 71..77 -> "🌨️" to t("Karlı")
+        in 80..82 -> "🌧️" to t("Sağanak")
+        85, 86 -> "🌨️" to t("Kar sağanağı")
+        in 95..99 -> "⛈️" to t("Fırtına")
         else -> "🌡️" to ""
     }
+
+    // "Açık" and "Kapalı" also mean on/off in the catalog, so the sky words skip it
+    private fun weatherWord(tr: String, en: String) = if (I18n.turkish) tr else en
 }
 
 object SpeedTest {

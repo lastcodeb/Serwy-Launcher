@@ -45,6 +45,7 @@ import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.data.Wiz
 import kotlinx.coroutines.launch
+import dev.mibox.neon.i18n.t
 
 @Composable
 private fun NeonDialog(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
@@ -115,26 +116,26 @@ fun AppMenu(
         Text(app.label, style = st.headline)
         Spacer(Modifier.height(4.dp))
         if (!pickProfile) {
-            if (canMove) MenuItem("↔   Taşı", onMove, Modifier.focusRequester(first))
-            MenuItem("🙈   Gizle", onHide, if (canMove) Modifier else Modifier.focusRequester(first))
+            if (canMove) MenuItem(t("↔   Taşı"), onMove, Modifier.focusRequester(first))
+            MenuItem(t("🙈   Gizle"), onHide, if (canMove) Modifier else Modifier.focusRequester(first))
             MenuItem(
-                if (app.pkg in pinned) "⭐   Favorilerden çıkar" else "⭐   Favorilere ekle",
+                if (app.pkg in pinned) t("⭐   Favorilerden çıkar") else t("⭐   Favorilere ekle"),
                 { vm.toggleShowcase(app.pkg); onDismiss() },
             )
             if (wizIp != null) {
-                val current = profile?.let { "${Wiz.presetEmoji(it)} ${Wiz.presetName(it)}" } ?: "yok"
-                MenuItem("💡   Işık profili: $current", { pickProfile = true })
+                val current = profile?.let { "${Wiz.presetEmoji(it)} ${Wiz.presetName(it)}" } ?: t("yok")
+                MenuItem(t("💡   Işık profili: {0}", current), { pickProfile = true })
             }
-            MenuItem("ⓘ   Uygulama bilgisi", onInfo)
-            MenuItem("✕   Kapat", onDismiss)
+            MenuItem(t("ⓘ   Uygulama bilgisi"), onInfo)
+            MenuItem(t("✕   Kapat"), onDismiss)
         } else {
-            Text("Bu uygulama açılınca ışık:", style = st.body, color = st.textDim)
+            Text(t("Bu uygulama açılınca ışık:"), style = st.body, color = st.textDim)
             Column(
                 Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 MenuItem(
-                    st.mark(profile == null) + "Değişmesin",
+                    st.mark(profile == null) + t("Değişmesin"),
                     { vm.setLightProfile(app.pkg, null); pickProfile = false },
                     Modifier.focusRequester(first),
                 )
@@ -145,7 +146,7 @@ fun AppMenu(
                     )
                 }
             }
-            MenuItem("←   Geri", { pickProfile = false })
+            MenuItem(t("←   Geri"), { pickProfile = false })
         }
     }
     FocusOnOpen(first)
@@ -166,11 +167,11 @@ fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, o
         Text(item.title, style = st.headline, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(4.dp))
         MenuItem(
-            if (pinned) "⭐   Favorilerden çıkar" else "⭐   Favorilere ekle",
+            if (pinned) t("⭐   Favorilerden çıkar") else t("⭐   Favorilere ekle"),
             { vm.togglePinned(item); onToggled() },
             Modifier.focusRequester(first),
         )
-        MenuItem("✕   Kapat", onDismiss)
+        MenuItem(t("✕   Kapat"), onDismiss)
     }
     FocusOnOpen(first)
 }
@@ -189,19 +190,19 @@ fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -
         when (page) {
             MenuPage.Main -> {
                 Text(
-                    if (st.theme == HomeTheme.NEON) "Neon" else "Menü",
+                    if (st.theme == HomeTheme.NEON) "Neon" else t("Menü"),
                     style = st.headline.fillWith(st.accentBrush, st.titleColor),
                 )
                 Spacer(Modifier.height(4.dp))
-                MenuItem("👁   Gizli uygulamalar (${hidden.size})", { page = MenuPage.Hidden }, Modifier.focusRequester(first))
-                MenuItem("📍   Şehir: ${city.name}", { page = MenuPage.City })
-                MenuItem("🎨   Tema", onOpenTheme)
-                MenuItem("⚙️   Android TV ayarları", { onDismiss(); vm.openSystemSettings() })
-                MenuItem("✕   Kapat", onDismiss)
+                MenuItem(t("👁   Gizli uygulamalar ({0})", hidden.size), { page = MenuPage.Hidden }, Modifier.focusRequester(first))
+                MenuItem(t("📍   Şehir: {0}", city.name), { page = MenuPage.City })
+                MenuItem(t("🎨   Tema"), onOpenTheme)
+                MenuItem(t("⚙️   Android TV ayarları"), { onDismiss(); vm.openSystemSettings() })
+                MenuItem(t("✕   Kapat"), onDismiss)
             }
             MenuPage.Hidden -> {
-                Text("Gizli uygulamalar", style = st.headline)
-                Text("Göstermek için seç", style = st.body, color = st.textDim)
+                Text(t("Gizli uygulamalar"), style = st.headline)
+                Text(t("Göstermek için seç"), style = st.body, color = st.textDim)
                 Column(
                     Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -214,7 +215,7 @@ fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -
                         )
                     }
                 }
-                MenuItem("←   Geri", { page = MenuPage.Main }, if (hidden.isEmpty()) Modifier.focusRequester(first) else Modifier)
+                MenuItem(t("←   Geri"), { page = MenuPage.Main }, if (hidden.isEmpty()) Modifier.focusRequester(first) else Modifier)
             }
             MenuPage.City -> CityEditor(vm, first, onDone = { page = MenuPage.Main })
         }
@@ -240,7 +241,7 @@ private fun CityEditor(vm: LauncherViewModel, first: FocusRequester, onDone: () 
         }
     }
 
-    Text("Şehir", style = st.headline)
+    Text(t("Şehir"), style = st.headline)
     val fieldShape = st.shapeOf(14.dp)
     Box(
         Modifier
@@ -252,7 +253,7 @@ private fun CityEditor(vm: LauncherViewModel, first: FocusRequester, onDone: () 
             .padding(horizontal = 18.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        if (text.isEmpty()) Text("Örn. Ankara", style = st.item, color = st.textDim)
+        if (text.isEmpty()) Text(t("Örn. Ankara"), style = st.item, color = st.textDim)
         BasicTextField(
             value = text,
             onValueChange = { text = it; error = false },
@@ -264,7 +265,7 @@ private fun CityEditor(vm: LauncherViewModel, first: FocusRequester, onDone: () 
             keyboardActions = KeyboardActions(onDone = { save() }),
         )
     }
-    if (error) Text("Şehir bulunamadı", style = st.body, color = st.danger)
-    MenuItem(if (busy) "Aranıyor…" else "✓   Kaydet", { save() })
-    MenuItem("←   Geri", onDone)
+    if (error) Text(t("Şehir bulunamadı"), style = st.body, color = st.danger)
+    MenuItem(if (busy) t("Aranıyor…") else t("✓   Kaydet"), { save() })
+    MenuItem(t("←   Geri"), onDone)
 }

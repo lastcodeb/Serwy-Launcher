@@ -36,6 +36,7 @@ import dev.mibox.neon.data.Wiz
 import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.t
 
 private val BigTime = DateTimeFormatter.ofPattern("HH:mm", TR)
 private val LongDate = DateTimeFormatter.ofPattern("d MMMM EEEE", TR)
@@ -103,7 +104,7 @@ fun ControlCenter(
             }
 
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Section("Işık", lightStatus(wizIp, wiz))
+                Section(t("Işık"), lightStatus(wizIp, wiz))
                 if (wizIp != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         favorites.take(3).forEachIndexed { i, id ->
@@ -117,25 +118,25 @@ fun ControlCenter(
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Chip(if (wiz?.on == true) "Kapat" else "Aç", onClick = vm::wizToggle, leading = "⏻")
-                        Chip("Tüm ışık ayarları", onClick = onOpenLight, leading = "💡")
+                        Chip(if (wiz?.on == true) t("Kapat") else t("Aç"), onClick = vm::wizToggle, leading = "⏻")
+                        Chip(t("Tüm ışık ayarları"), onClick = onOpenLight, leading = "💡")
                     }
                 } else {
-                    Chip("Işığı bul", onClick = vm::wizRefresh, leading = "🔍", modifier = Modifier.focusRequester(first))
+                    Chip(t("Işığı bul"), onClick = vm::wizRefresh, leading = "🔍", modifier = Modifier.focusRequester(first))
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Section("Sistem", null)
+                Section(t("Sistem"), null)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val f = freed
                     Chip(
                         if (f != null) {
-                            "Kapatıldı · +${f / (1024 * 1024)} MB"
+                            t("Kapatıldı · +{0} MB", f / (1024 * 1024))
                         } else if (st.theme == HomeTheme.NEON) {
-                            "Arka plandaki uygulamaları kapat · RAM %${ram.usedPercent}"
+                            t("Arka plandaki uygulamaları kapat · RAM %{0}", ram.usedPercent)
                         } else {
                             // Shorter: the wide fonts would squeeze the speed chip beside it
-                            "Belleği boşalt · RAM %${ram.usedPercent}"
+                            t("Belleği boşalt · RAM %{0}", ram.usedPercent)
                         },
                         onClick = vm::boost,
                         leading = "⚡",
@@ -144,17 +145,17 @@ fun ControlCenter(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (wizIp != null) Chip(sleepLabel(sleepAt), onClick = vm::wizCycleSleep, leading = "🌙")
-                    Chip("Android TV ayarları", onClick = { onDismiss(); vm.openSystemSettings() }, leading = "⚙️")
+                    Chip(t("Android TV ayarları"), onClick = { onDismiss(); vm.openSystemSettings() }, leading = "⚙️")
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Chip("Gizli uygulamalar (${hidden.size}) · Şehir", onClick = onOpenMenu, leading = "👁")
-                    Chip("Tema", onClick = onOpenTheme, leading = "🎨")
+                    Chip(t("Gizli uygulamalar ({0}) · Şehir", hidden.size), onClick = onOpenMenu, leading = "👁")
+                    Chip(t("Tema"), onClick = onOpenTheme, leading = "🎨")
                 }
 
                 Spacer(Modifier.height(4.dp))
-                Section("Keşfet", null)
+                Section(t("Keşfet"), null)
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Chip("Ağ durumu", onClick = onOpenNet, leading = "📡")
+                    Chip(t("Ağ durumu"), onClick = onOpenNet, leading = "📡")
                     Chip(
                         "Neon Wrapped",
                         onClick = onOpenWrapped,
@@ -166,7 +167,7 @@ fun ControlCenter(
                             null
                         },
                     )
-                    Chip("Maç günü", onClick = onOpenMatch, leading = "⚽")
+                    Chip(t("Maç günü"), onClick = onOpenMatch, leading = "⚽")
                 }
             }
         }
@@ -192,23 +193,23 @@ private fun Section(title: String, status: String?) {
 }
 
 private fun lightStatus(ip: String?, p: dev.mibox.neon.data.WizPilot?): String = when {
-    ip == null -> "bulunamadı"
-    p == null -> "bağlanıyor…"
-    !p.on -> "kapalı"
-    p.sceneId > 0 -> "${Wiz.sceneName(p.sceneId) ?: "Sahne"} · %${p.dimming}"
-    else -> "açık · %${p.dimming}"
+    ip == null -> t("bulunamadı")
+    p == null -> t("bağlanıyor…")
+    !p.on -> t("kapalı")
+    p.sceneId > 0 -> t("{0} · %{1}", Wiz.sceneName(p.sceneId) ?: t("Sahne"), p.dimming)
+    else -> t("açık · %{0}", p.dimming)
 }
 
 private fun speedLabel(s: SpeedState, last: SpeedResult?): String = when (s) {
     // After a restart nothing has run yet: show the newest saved result, as the top bar does
-    SpeedState.Idle -> last?.let { "${String.format(TR, "%.1f", it.mbps)} Mbps" } ?: "Hız testi"
-    is SpeedState.Running -> if (s.mbps == 0.0) "Ölçülüyor…" else "${String.format(TR, "%.1f", s.mbps)} Mbps"
+    SpeedState.Idle -> last?.let { "${String.format(TR, "%.1f", it.mbps)} Mbps" } ?: t("Hız testi")
+    is SpeedState.Running -> if (s.mbps == 0.0) t("Ölçülüyor…") else "${String.format(TR, "%.1f", s.mbps)} Mbps"
     is SpeedState.Done -> "${String.format(TR, "%.1f", s.mbps)} Mbps"
-    SpeedState.Failed -> "Bağlantı yok"
+    SpeedState.Failed -> t("Bağlantı yok")
 }
 
 private fun sleepLabel(at: Long?): String {
-    if (at == null) return "Uyku zamanlayıcısı"
+    if (at == null) return t("Uyku zamanlayıcısı")
     val min = ((at - System.currentTimeMillis()) / 60_000).coerceAtLeast(0)
-    return "Uyku $min dk"
+    return t("Uyku {0} dk", min)
 }

@@ -57,7 +57,9 @@
             </intent-filter>
         </activity>
 
-        <!-- Neon screensaver: started by the system only while the TV dreams -->
+        <!-- Neon screensaver: started by the system only while the TV dreams. It must stay in the
+             main process: on Android 11 the dream window (DreamActivity) is created in the
+             package's main process and crashes if the service lives elsewhere. -->
         <service
             android:name=".dream.NeonDream"
             android:exported="true"
@@ -73,6 +75,15 @@
         <receiver
             android:name=".SleepReceiver"
             android:exported="false" />
+
+        <!-- Box language changed: restart so every label is rebuilt in the new language -->
+        <receiver
+            android:name=".i18n.LocaleReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Galatasaray match day: alarm-driven score polling and light effects -->
         <receiver

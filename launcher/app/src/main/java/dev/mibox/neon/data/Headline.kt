@@ -7,7 +7,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
+import java.time.format.TextStyle
 import kotlin.math.roundToInt
+import dev.mibox.neon.i18n.I18n
+import dev.mibox.neon.i18n.t
 
 /** What kind of story the lead ("manşet") tells; the UI may style kinds differently (a live dot, a progress bar…). */
 enum class HeadlineKind {
@@ -60,11 +63,10 @@ object HeadlineEngine {
     private const val NEAR_END = 0.7f
     private const val UPCOMING_DAYS = 3L
 
-    private val Weekdays = listOf("Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar")
-    private val Months = listOf(
-        "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-    )
-    private val MonthsShort = listOf("Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara")
+    // Day and month names in the box's language ("Pazartesi" / "Monday")
+    private fun weekday(at: ZonedDateTime) = at.dayOfWeek.getDisplayName(TextStyle.FULL, I18n.locale)
+    private fun month(at: ZonedDateTime) = at.month.getDisplayName(TextStyle.FULL, I18n.locale)
+    private fun monthShort(at: ZonedDateTime) = at.month.getDisplayName(TextStyle.SHORT, I18n.locale)
 
     /**
      * @param match the match card state (live / recent result / next fixture), null when disabled
@@ -96,8 +98,8 @@ object HeadlineEngine {
 
         if (hero?.reason == HeroReason.Predicted) {
             return Headline(
-                HeadlineKind.PREDICTED, "Genelde bu saatte", hero.app.label,
-                appDeck(hero.app.pkg, apps, now), "Aç", HeadlineTarget.OpenApp(hero.app.pkg),
+                HeadlineKind.PREDICTED, t("Genelde bu saatte"), hero.app.label,
+                appDeck(hero.app.pkg, apps, now), t("Aç"), HeadlineTarget.OpenApp(hero.app.pkg),
             )
         }
 
@@ -114,12 +116,12 @@ object HeadlineEngine {
     fun greeting(now: Long): Headline {
         val at = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault())
         val kicker = when (at.hour) {
-            in 5..10 -> "Günaydın"
-            in 11..17 -> "İyi günler"
-            in 18..21 -> "İyi akşamlar"
-            else -> "İyi geceler"
+            in 5..10 -> t("Günaydın")
+            in 11..17 -> t("İyi günler")
+            in 18..21 -> t("İyi akşamlar")
+            else -> t("İyi geceler")
         }
-        val deck = "${at.dayOfMonth} ${Months[at.monthValue - 1]} ${Weekdays[at.dayOfWeek.value - 1]}"
+        val deck = t("{0} {1} {2}", at.dayOfMonth, month(at), weekday(at))
         return Headline(HeadlineKind.GREETING, kicker, "Neon", deck, "", HeadlineTarget.None)
     }
 
@@ -130,23 +132,23 @@ object HeadlineEngine {
         val episodeNo = episodeLabel(item)
         val deck = listOfNotNull(
             episodeNo ?: item.episodeTitle?.takeIf { it.isNotBlank() },
-            pct?.let { "%$it izlendi" },
+            pct?.let { t("%{0} izlendi", it) },
         ).joinToString(" · ")
         return Headline(
             HeadlineKind.CONTINUE,
-            if (resume) "Kaldığın yerden · $app" else app,
-            item.title, deck, "Devam et", HeadlineTarget.OpenWatch(item),
+            if (resume) t("Kaldığın yerden · {0}", app) else app,
+            item.title, deck, t("Devam et"), HeadlineTarget.OpenWatch(item),
         )
     }
 
     /** A focused app in the same format. */
     fun forApp(app: AppEntry, kind: HeadlineKind, apps: HeadlineApps, now: Long): Headline {
         val kicker = when (kind) {
-            HeadlineKind.PREDICTED -> "Genelde bu saatte"
-            HeadlineKind.LAST_USED -> "Son açılan"
-            else -> "Uygulama"
+            HeadlineKind.PREDICTED -> t("Genelde bu saatte")
+            HeadlineKind.LAST_USED -> t("Son açılan")
+            else -> t("Uygulama")
         }
-        return Headline(kind, kicker, app.label, appDeck(app.pkg, apps, now), "Aç", HeadlineTarget.OpenApp(app.pkg))
+        return Headline(kind, kicker, app.label, appDeck(app.pkg, apps, now), t("Aç"), HeadlineTarget.OpenApp(app.pkg))
     }
 
     private fun lastUsed(app: AppEntry, apps: HeadlineApps, now: Long) = forApp(app, HeadlineKind.LAST_USED, apps, now)
@@ -154,21 +156,21 @@ object HeadlineEngine {
     private fun live(m: MatchState.Live): Headline {
         val deck = listOf(m.clock, m.status, m.competition).filter { it.isNotBlank() }.joinToString(" · ")
         return Headline(
-            HeadlineKind.MATCH_LIVE, "SON DAKİKA", scoreLine(m, m.gsScore, m.oppScore),
-            deck, "Maçı aç", HeadlineTarget.OpenMatch,
+            HeadlineKind.MATCH_LIVE, t("SON DAKİKA"), scoreLine(m, m.gsScore, m.oppScore),
+            deck, t("Maçı aç"), HeadlineTarget.OpenMatch,
         )
     }
 
     private fun result(m: MatchState.Finished): Headline {
         val verdict = when (m.result) {
-            MatchResult.WIN -> "Galibiyet"
-            MatchResult.DRAW -> "Beraberlik"
-            MatchResult.LOSS -> "Mağlubiyet"
+            MatchResult.WIN -> t("Galibiyet")
+            MatchResult.DRAW -> t("Beraberlik")
+            MatchResult.LOSS -> t("Mağlubiyet")
         }
         return Headline(
-            HeadlineKind.MATCH_RESULT, "Maç sonucu", scoreLine(m, m.gsScore, m.oppScore),
+            HeadlineKind.MATCH_RESULT, t("Maç sonucu"), scoreLine(m, m.gsScore, m.oppScore),
             listOf(verdict, m.competition).filter { it.isNotBlank() }.joinToString(" · "),
-            "Maçı aç", HeadlineTarget.OpenMatch,
+            t("Maçı aç"), HeadlineTarget.OpenMatch,
         )
     }
 
@@ -177,19 +179,19 @@ object HeadlineEngine {
         val today = Instant.ofEpochMilli(now).atZone(ko.zone).toLocalDate()
         val days = ChronoUnit.DAYS.between(today, ko.toLocalDate())
         val whenText = when {
-            days <= 0L -> if (ko.hour >= 17) "Bu akşam" else "Bugün"
-            days == 1L -> "Yarın"
-            else -> Weekdays[ko.dayOfWeek.value - 1]
+            days <= 0L -> if (ko.hour >= 17) t("Bu akşam") else t("Bugün")
+            days == 1L -> t("Yarın")
+            else -> weekday(ko)
         }
-        val word = if (isDerby(m)) "derbi" else "maç"
+        val word = if (isDerby(m)) t("derbi") else t("maç")
         val deck = listOfNotNull(
             m.competition.takeIf { it.isNotBlank() },
-            if (m.home) "İç saha" else "Deplasman",
-            "Maç günü ışıkları açık".takeIf { lights && kind == HeadlineKind.MATCH_TODAY },
+            if (m.home) t("İç saha") else t("Deplasman"),
+            t("Maç günü ışıkları açık").takeIf { lights && kind == HeadlineKind.MATCH_TODAY },
         ).joinToString(" · ")
         return Headline(
-            kind, "$whenText $word", "${vs(m)}, ${"%02d:%02d".format(ko.hour, ko.minute)}",
-            deck, "Maçı aç", HeadlineTarget.OpenMatch,
+            kind, t("{0} {1}", whenText, word), "${vs(m)}, ${"%02d:%02d".format(ko.hour, ko.minute)}",
+            deck, t("Maçı aç"), HeadlineTarget.OpenMatch,
         )
     }
 
@@ -208,7 +210,7 @@ object HeadlineEngine {
         val n = Normalizer.normalize(m.opponent, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase()
             .replace('ı', 'i')
         val short = m.opponentShort.uppercase(java.util.Locale("tr"))
-        return "fenerbah" in n || "besikta" in n || short == "FEN" || short == "BJK"
+        return "fenerbah" in n || "besikta" in n || short == "FB" || short == "FEN" || short == "BJK"
     }
 
     private fun episodeLabel(item: WatchItem): String? {
@@ -216,8 +218,8 @@ object HeadlineEngine {
         val s = num(item.season)
         val e = num(item.episode)
         return when {
-            s != null && e != null -> "$s. Sezon $e. Bölüm"
-            e != null -> "$e. Bölüm"
+            s != null && e != null -> t("{0}. Sezon {1}. Bölüm", s, e)
+            e != null -> t("{0}. Bölüm", e)
             else -> null
         }
     }
@@ -225,7 +227,7 @@ object HeadlineEngine {
     /** "Son açılış: dün 21:40" when known, else the category, else empty. */
     fun appDeck(pkg: String, apps: HeadlineApps, now: Long): String {
         val seen = apps.lastSeen(pkg)
-        if (seen != null && seen > 0) return "Son açılış: ${whenText(seen, now)}"
+        if (seen != null && seen > 0) return lastOpenedPrefix() + whenText(seen, now)
         return apps.category(pkg).orEmpty()
     }
 
@@ -235,10 +237,13 @@ object HeadlineEngine {
         val days = ChronoUnit.DAYS.between(at.toLocalDate(), today)
         val time = "%02d:%02d".format(at.hour, at.minute)
         return when {
-            days <= 0L -> "bugün $time"
-            days == 1L -> "dün $time"
-            days <= 6L -> "${Weekdays[at.dayOfWeek.value - 1]} $time"
-            else -> "${at.dayOfMonth} ${MonthsShort[at.monthValue - 1]}"
+            days <= 0L -> t("bugün {0}", time)
+            days == 1L -> t("dün {0}", time)
+            days <= 6L -> "${weekday(at)} $time"
+            else -> "${at.dayOfMonth} ${monthShort(at)}"
         }
     }
+
+    /** "Son açılış: " in the box's language; the Gazete index looks for it to tell app decks apart. */
+    fun lastOpenedPrefix(): String = t("Son açılış: ")
 }

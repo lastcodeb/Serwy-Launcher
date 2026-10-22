@@ -47,6 +47,7 @@ import dev.mibox.neon.data.HeroReason
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import dev.mibox.neon.i18n.t
 
 private const val IDLE_MS = 30_000L
 private const val SHOWCASE_SLIDE_MS = 7_000L
@@ -183,7 +184,7 @@ private fun HeroHost(vm: LauncherViewModel, focus: MutableState<Focus?>) {
         f is Focus.Watch && f.app != null -> HeroContent(null, f.item.title, f.item.subtitle ?: f.app.label, f.app)
         f is Focus.App -> HeroContent(null, f.app.label, null, f.app)
         // Usage history says this is what is usually opened now: say so in the eyebrow line
-        h != null -> HeroContent(if (h.reason == HeroReason.Predicted) "Genelde bu saatte" else null, h.app.label, null, h.app)
+        h != null -> HeroContent(if (h.reason == HeroReason.Predicted) t("Genelde bu saatte") else null, h.app.label, null, h.app)
         else -> null
     }
 

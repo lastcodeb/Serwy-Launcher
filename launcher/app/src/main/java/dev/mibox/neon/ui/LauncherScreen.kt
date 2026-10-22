@@ -26,6 +26,7 @@ import dev.mibox.neon.ui.gazete.GazeteHome
 import dev.mibox.neon.ui.teletext.TeletextHome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import dev.mibox.neon.i18n.t
 
 /**
  * The shell shared by every home theme: toasts, the lifecycle and polling block, the overlays
@@ -70,16 +71,16 @@ fun LauncherScreen(vm: LauncherViewModel) {
     LaunchedEffect(Unit) {
         vm.pinResult.collect { r ->
             val text = when (r) {
-                PinResult.Added -> "Favorilere eklendi"
-                PinResult.Removed -> "Favorilerden çıkarıldı"
-                PinResult.Full -> "Favoriler dolu (en fazla 12 içerik)"
+                PinResult.Added -> t("Favorilere eklendi")
+                PinResult.Removed -> t("Favorilerden çıkarıldı")
+                PinResult.Full -> t("Favoriler dolu (en fazla 12 içerik)")
             }
             Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
         }
     }
     LaunchedEffect(Unit) {
         vm.netWarning.collect { w ->
-            Toast.makeText(context, "Bağlantı 4K için yetersiz (${fmtMbps(w.mbps)} Mbps)", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, t("Bağlantı 4K için yetersiz ({0} Mbps)", fmtMbps(w.mbps)), Toast.LENGTH_LONG).show()
         }
     }
 

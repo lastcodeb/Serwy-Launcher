@@ -79,6 +79,7 @@ import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
 import dev.mibox.neon.data.FavoriteCard
 import dev.mibox.neon.data.WatchItem
+import dev.mibox.neon.i18n.t
 
 /** What has focus in the rows; drives the hero, the backdrop glow and the footer. */
 @Immutable
@@ -199,7 +200,7 @@ fun RowsArea(
                     .focusRequester(rows.requester(key))
                     .onFocusChanged { if (it.hasFocus) rows.activeKey = key }
                 when (key) {
-                    ROW_FAVORITES -> RowSection("Favoriler", favorites.size, Small) {
+                    ROW_FAVORITES -> RowSection(t("Favoriler"), favorites.size, Small) {
                         FavoritesRow(
                             favorites, vm, rows.listState(key), rowModifier,
                             onFocused = { focus.value = it },
@@ -207,21 +208,21 @@ fun RowsArea(
                             onContentMenu = onContentMenu,
                         )
                     }
-                    ROW_WATCH -> RowSection("İzlemeye devam et", watch.size) {
+                    ROW_WATCH -> RowSection(t("İzlemeye devam et"), watch.size) {
                         WatchRow(
                             watch, vm, rows.listState(key), rowModifier,
                             onFocused = { item -> focus.value = Focus.Watch(item, vm.appFor(item.pkg)) },
                             onLongClick = onContentMenu,
                         )
                     }
-                    ROW_FOR_YOU -> RowSection("Senin için", forYou.size) {
+                    ROW_FOR_YOU -> RowSection(t("Senin için"), forYou.size) {
                         WatchRow(
                             forYou, vm, rows.listState(key), rowModifier,
                             onFocused = { item -> focus.value = Focus.Watch(item, vm.appFor(item.pkg)) },
                             onLongClick = onContentMenu,
                         )
                     }
-                    else -> RowSection("Tüm uygulamalar", apps.size) {
+                    else -> RowSection(t("Tüm uygulamalar"), apps.size) {
                         AppsRow(
                             apps, vm, moving, rows.listState(key), rowModifier,
                             onFocused = { focus.value = Focus.App(it) },
@@ -560,7 +561,7 @@ private fun WatchCard(
 /** y1032px (516dp): just the name of what has focus; while moving, how to move it. */
 @Composable
 fun FooterLabel(focus: State<Focus?>, moving: Boolean) {
-    val label = (if (moving) "◀ ▶ taşı  ·  OK bırak" else focus.value?.label) ?: return
+    val label = (if (moving) t("◀ ▶ taşı  ·  OK bırak") else focus.value?.label) ?: return
     Text(
         label,
         modifier = Modifier.padding(horizontal = 48.dp).baselineAt(516.dp),

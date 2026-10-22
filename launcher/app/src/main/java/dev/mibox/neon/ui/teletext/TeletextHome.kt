@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import dev.mibox.neon.i18n.t
 
 private val HeaderDate = DateTimeFormatter.ofPattern("EEE d MMM", TR)
 private val HeaderTime = DateTimeFormatter.ofPattern("HH:mm:ss", TR)
@@ -255,9 +256,9 @@ private fun TtHintRow(ctx: TtCtx, page: Int) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (page == TtPage.HOME) {
-            TtText("Yukarı/aşağı: seç", TtCyan)
+            TtText(t("Yukarı/aşağı: seç"), TtCyan)
             Spacer(Modifier.width(24.dp))
-            TtText("OK: aç", TtCyan, Modifier.weight(1f))
+            TtText(t("OK: aç"), TtCyan, Modifier.weight(1f))
             // The gear: Android TV settings, long press = the launcher menu
             TtFocusable(
                 onClick = { ctx.vm.openSystemSettings() },
@@ -265,9 +266,9 @@ private fun TtHintRow(ctx: TtCtx, page: Int) {
                 onLongClick = ctx.actions.onOpenMenu,
             ) { f ->
                 Row(Modifier.fillMaxHeight().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TtText("Ayarlar", tc(f, TtYellow))
+                    TtText(t("Ayarlar"), tc(f, TtYellow))
                     Spacer(Modifier.width(12.dp))
-                    TtText("(uzun bas: menü)", tc(f, TtCyan))
+                    TtText(t("(uzun bas: menü)"), tc(f, TtCyan))
                 }
             }
         } else {
@@ -277,16 +278,16 @@ private fun TtHintRow(ctx: TtCtx, page: Int) {
                 requester = ctx.nav.fallback,
             ) { f ->
                 Row(Modifier.fillMaxHeight().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    TtText("100 Ana sayfa", tc(f, TtYellow))
+                    TtText(t("100 Ana sayfa"), tc(f, TtYellow))
                 }
             }
             Spacer(Modifier.weight(1f))
             TtText(
                 when (page) {
-                    TtPage.RESUME, TtPage.APPS -> "Uzun bas: menü açılır"
-                    TtPage.SPORT -> "OK: değiştir"
-                    TtPage.WEATHER -> "Uzun bas: ağ ayrıntısı"
-                    else -> "Sayfa no yaz ya da renkli tuşa bas"
+                    TtPage.RESUME, TtPage.APPS -> t("Uzun bas: menü açılır")
+                    TtPage.SPORT -> t("OK: değiştir")
+                    TtPage.WEATHER -> t("Uzun bas: ağ ayrıntısı")
+                    else -> t("Sayfa no yaz ya da renkli tuşa bas")
                 },
                 TtCyan,
             )
@@ -298,10 +299,10 @@ private fun TtHintRow(ctx: TtCtx, page: Int) {
 @Composable
 private fun TtFastext(ctx: TtCtx) {
     Row(Modifier.fillMaxWidth().height(TtRowH), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        FastKey(ctx, "Spor", TtPage.SPORT, TtRed, TtBlack, Modifier.weight(1f))
-        FastKey(ctx, "Devam et", TtPage.RESUME, TtGreen, TtBlack, Modifier.weight(1f))
-        FastKey(ctx, "Hava", TtPage.WEATHER, TtYellow, TtBlack, Modifier.weight(1f))
-        FastKey(ctx, "Uygulamalar", TtPage.APPS, TtBlue, TtWhite, Modifier.weight(1f))
+        FastKey(ctx, t("Spor"), TtPage.SPORT, TtRed, TtBlack, Modifier.weight(1f))
+        FastKey(ctx, t("Devam et"), TtPage.RESUME, TtGreen, TtBlack, Modifier.weight(1f))
+        FastKey(ctx, t("Hava"), TtPage.WEATHER, TtYellow, TtBlack, Modifier.weight(1f))
+        FastKey(ctx, t("Uygulamalar"), TtPage.APPS, TtBlue, TtWhite, Modifier.weight(1f))
     }
 }
 

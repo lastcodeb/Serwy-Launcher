@@ -46,8 +46,10 @@ import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import dev.mibox.neon.i18n.t
 
-val TR: Locale = Locale.forLanguageTag("tr-TR")
+/** The box's locale for dates, numbers and casing; named TR from when the app was Turkish only. */
+val TR: Locale get() = dev.mibox.neon.i18n.I18n.locale
 private val TimeFmt = DateTimeFormatter.ofPattern("HH:mm", TR)
 private val DateFmt = DateTimeFormatter.ofPattern("EEE d MMM", TR)
 
@@ -99,7 +101,7 @@ fun TopBar(
         ) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = "Ayarlar",
+                contentDescription = t("Ayarlar"),
                 modifier = Modifier.size(20.dp).align(Alignment.Center),
                 tint = Neon.Icon,
             )
@@ -162,7 +164,7 @@ private fun LightChip(vm: LauncherViewModel, onOpen: () -> Unit) {
         else -> Neon.Ok
     }
     Chip(
-        if (ip == null) "Işık bul" else "Işık",
+        if (ip == null) t("Işık bul") else t("Işık"),
         onClick = { vm.wizRefresh(); onOpen() },
         // Long press: straight into the first favorite (Parti) and back
         onLongClick = vm::wizQuick,
@@ -179,10 +181,10 @@ private fun SpeedChip(vm: LauncherViewModel, onOpenNet: () -> Unit) {
     val s = speed
     val last = net.last
     val label = when (s) {
-        SpeedState.Idle -> last?.let { "${fmt(it.mbps)} Mbps" } ?: "Hız testi"
-        is SpeedState.Running -> if (s.mbps == 0.0) "Ölçülüyor…" else "${fmt(s.mbps)} Mbps"
+        SpeedState.Idle -> last?.let { "${fmt(it.mbps)} Mbps" } ?: t("Hız testi")
+        is SpeedState.Running -> if (s.mbps == 0.0) t("Ölçülüyor…") else "${fmt(s.mbps)} Mbps"
         is SpeedState.Done -> "${fmt(s.mbps)} Mbps"
-        SpeedState.Failed -> "Bağlantı yok"
+        SpeedState.Failed -> t("Bağlantı yok")
     }
     val showDot = s !is SpeedState.Running && s != SpeedState.Failed && last != null
     val dot: @Composable (() -> Unit)? = if (showDot) {
@@ -209,7 +211,7 @@ private fun RamChip(vm: LauncherViewModel) {
             Modifier.fillMaxHeight().padding(start = 15.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("RAM %$pct", style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold))
+            Text(t("RAM %{0}", pct), style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold))
             Spacer(Modifier.width(10.dp))
             Box(Modifier.size(7.dp).background(dot, CircleShape))
             Spacer(Modifier.width(11.dp))
@@ -221,7 +223,7 @@ private fun RamChip(vm: LauncherViewModel) {
                 Spacer(Modifier.width(7.dp))
                 val f = freed
                 Text(
-                    if (f != null) "Kapatıldı +${f / (1024 * 1024)} MB" else "Boşalt",
+                    if (f != null) t("Kapatıldı +{0} MB", f / (1024 * 1024)) else t("Boşalt"),
                     style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
                 )
             }

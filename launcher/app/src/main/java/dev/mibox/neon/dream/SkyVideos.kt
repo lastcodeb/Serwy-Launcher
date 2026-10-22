@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.time.LocalTime
+import dev.mibox.neon.i18n.t
 
 /** One playable clip and who made it (kept for reference; the screensaver shows no credits). */
 @Immutable
@@ -59,22 +60,22 @@ object SkyVideos {
         }
         // Weather that changes the whole picture wins over the time of day
         return when (weather) {
-            "storm" -> SkyMood("storm", "lightning storm", "Fırtına", Color(0xFF3A3F7A), listOf("lightning", "thunderstorm", "thunder"))
-            "rain" -> SkyMood("rain", "rain drops", "Yağmur", Color(0xFF3D5A80), listOf("rain", "raindrops", "rainy"))
-            "snow" -> SkyMood("snow", "snowfall", "Kar", Color(0xFFDDE7F5), listOf("snow", "snowfall", "snowflakes"))
-            "fog" -> SkyMood("fog", "fog sea", "Sis", Color(0xFFB8C2CC), listOf("fog", "mist", "foggy"))
+            "storm" -> SkyMood("storm", "lightning storm", t("Fırtına"), Color(0xFF3A3F7A), listOf("lightning", "thunderstorm", "thunder"))
+            "rain" -> SkyMood("rain", "rain drops", t("Yağmur"), Color(0xFF3D5A80), listOf("rain", "raindrops", "rainy"))
+            "snow" -> SkyMood("snow", "snowfall", t("Kar"), Color(0xFFDDE7F5), listOf("snow", "snowfall", "snowflakes"))
+            "fog" -> SkyMood("fog", "fog sea", t("Sis"), Color(0xFFB8C2CC), listOf("fog", "mist", "foggy"))
             else -> when (time) {
-                "dawn" -> SkyMood("dawn", "sunrise sea", "Gün doğumu", Color(0xFFFF9466), SEA)
-                "dusk" -> SkyMood("dusk", "sunset sea", "Gün batımı", Color(0xFFFF7A45), SEA)
+                "dawn" -> SkyMood("dawn", "sunrise sea", t("Gün doğumu"), Color(0xFFFF9466), SEA)
+                "dusk" -> SkyMood("dusk", "sunset sea", t("Gün batımı"), Color(0xFFFF7A45), SEA)
                 "day" -> if (weather == "cloudy") {
-                    SkyMood("day-cloudy", "clouds sky timelapse", "Bulutlu gökyüzü", Color(0xFFE6EEF7), listOf("clouds", "cloud", "sky"))
+                    SkyMood("day-cloudy", "clouds sky timelapse", t("Bulutlu gökyüzü"), Color(0xFFE6EEF7), listOf("clouds", "cloud", "sky"))
                 } else {
-                    SkyMood("day-clear", "sea waves beach", "Açık deniz", Color(0xFFFFF1D6), SEA)
+                    SkyMood("day-clear", "sea waves beach", t("Açık deniz"), Color(0xFFFFF1D6), SEA)
                 }
                 else -> if (weather == "cloudy") {
-                    SkyMood("night-cloudy", "night sky clouds moon", "Bulutlu gece", Color(0xFF26306E), listOf("moon", "night sky", "stars"))
+                    SkyMood("night-cloudy", "night sky clouds moon", t("Bulutlu gece"), Color(0xFF26306E), listOf("moon", "night sky", "stars"))
                 } else {
-                    SkyMood("night-clear", "moon sea", "Aylı gece", Color(0xFF26306E), SEA)
+                    SkyMood("night-clear", "moon sea", t("Aylı gece"), Color(0xFF26306E), SEA)
                 }
             }
         }

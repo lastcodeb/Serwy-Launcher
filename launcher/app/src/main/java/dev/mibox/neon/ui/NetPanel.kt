@@ -49,6 +49,7 @@ import dev.mibox.neon.data.NetHealth
 import dev.mibox.neon.data.NetVerdict
 import dev.mibox.neon.data.SpeedResult
 import dev.mibox.neon.data.SpeedState
+import dev.mibox.neon.i18n.t
 
 private val PanelShape = RoundedCornerShape(28.dp)
 
@@ -63,26 +64,26 @@ fun verdictColor(v: NetVerdict): Color = when (v) {
 }
 
 fun verdictText(v: NetVerdict): String = when (v) {
-    NetVerdict.UHD_OK -> "4K için uygun"
-    NetVerdict.HD_OK -> "HD için yeterli"
-    NetVerdict.WEAK -> "Zayıf bağlantı"
-    NetVerdict.UNKNOWN -> "Ölçüm yok"
+    NetVerdict.UHD_OK -> t("4K için uygun")
+    NetVerdict.HD_OK -> t("HD için yeterli")
+    NetVerdict.WEAK -> t("Zayıf bağlantı")
+    NetVerdict.UNKNOWN -> t("Ölçüm yok")
 }
 
 private fun linkText(t: LinkType): String = when (t) {
-    LinkType.ETHERNET -> "Kablolu"
+    LinkType.ETHERNET -> t("Kablolu")
     LinkType.WIFI -> "Wi-Fi"
-    LinkType.OTHER -> "Diğer"
-    LinkType.NONE -> "Bağlantı yok"
+    LinkType.OTHER -> t("Diğer")
+    LinkType.NONE -> t("Bağlantı yok")
 }
 
 private fun agoText(at: Long): String {
     val m = ((System.currentTimeMillis() - at) / 60_000).coerceAtLeast(0)
     return when {
-        m < 1 -> "az önce"
-        m < 60 -> "$m dk önce"
-        m < 24 * 60 -> "${m / 60} sa önce"
-        else -> "${m / (24 * 60)} gün önce"
+        m < 1 -> t("az önce")
+        m < 60 -> t("{0} dk önce", m)
+        m < 24 * 60 -> t("{0} sa önce", m / 60)
+        else -> t("{0} gün önce", m / (24 * 60))
     }
 }
 
@@ -111,30 +112,30 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(st.plain("📡  Ağ durumu"), style = st.headline.fillWith(st.accentBrush, st.titleColor))
+                Text(st.plain(t("📡  Ağ durumu")), style = st.headline.fillWith(st.accentBrush, st.titleColor))
                 Spacer(Modifier.weight(1f))
                 VerdictBadge(net.verdict)
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                 Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatRow("Bağlantı") { StatText(linkText(net.link)) }
+                    StatRow(t("Bağlantı")) { StatText(linkText(net.link)) }
                     if (net.link == LinkType.WIFI) {
-                        StatRow("Sinyal") {
+                        StatRow(t("Sinyal")) {
                             SignalBars(net.signalBars)
                             Spacer(Modifier.width(8.dp))
                             StatText(net.rssiDbm?.let { "$it dBm" } ?: "–")
                         }
-                        StatRow("Bağlantı hızı") { StatText(net.linkMbps?.let { "$it Mbps" } ?: "–") }
+                        StatRow(t("Bağlantı hızı")) { StatText(net.linkMbps?.let { "$it Mbps" } ?: "–") }
                     }
-                    StatRow("Gecikme") { StatText(net.latencyMs?.let { "$it ms" } ?: "–") }
+                    StatRow(t("Gecikme")) { StatText(net.latencyMs?.let { "$it ms" } ?: "–") }
                     val last = net.last
-                    StatRow("Son ölçüm") {
-                        StatText(if (last == null) "Henüz yok" else "${oneDecimal(last.mbps)} Mbps")
+                    StatRow(t("Son ölçüm")) {
+                        StatText(if (last == null) t("Henüz yok") else "${oneDecimal(last.mbps)} Mbps")
                     }
                     if (last != null) {
                         Text(
-                            agoText(last.at) + if (last.auto) " · otomatik" else "",
+                            agoText(last.at) + if (last.auto) t(" · otomatik") else "",
                             modifier = Modifier.align(Alignment.End),
                             style = st.type(11.sp, color = st.textMuted),
                         )
@@ -142,7 +143,7 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        "Son ${history.size} ölçüm",
+                        t("Son {0} ölçüm", history.size),
                         style = st.type(13.sp, color = st.textDim),
                     )
                     HistoryChart(history)
@@ -151,13 +152,13 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Chip(
-                    if (speed is SpeedState.Running) "Ölçülüyor…" else "Hızı ölç",
+                    if (speed is SpeedState.Running) t("Ölçülüyor…") else t("Hızı ölç"),
                     onClick = vm::runSpeedTest,
                     leading = "⚡",
                     primary = true,
                     modifier = Modifier.focusRequester(first),
                 )
-                Chip("Kapat", onClick = onDismiss)
+                Chip(t("Kapat"), onClick = onDismiss)
             }
         }
     }
@@ -222,7 +223,7 @@ private fun HistoryChart(history: List<SpeedResult>) {
     val st = LocalHomeStyle.current
     if (history.isEmpty()) {
         Text(
-            "Henüz ölçüm yok. Hız testi yapınca burada görünür.",
+            t("Henüz ölçüm yok. Hız testi yapınca burada görünür."),
             style = st.type(12.sp, color = st.textMuted),
         )
         return
@@ -262,12 +263,12 @@ private fun HistoryChart(history: List<SpeedResult>) {
     }
     Row(Modifier.fillMaxWidth()) {
         val small = st.type(11.sp, color = st.textMuted)
-        Text("min ${oneDecimal(history.minOf { it.mbps })}", style = small)
+        Text(t("min {0}", oneDecimal(history.minOf { it.mbps })), style = small)
         Spacer(Modifier.weight(1f))
-        Text("maks ${oneDecimal(history.maxOf { it.mbps })} Mbps", style = small)
+        Text(t("maks {0} Mbps", oneDecimal(history.maxOf { it.mbps })), style = small)
     }
     Text(
-        "Kesik çizgi: 4K sınırı (25 Mbps) · soluk: otomatik ölçüm",
+        t("Kesik çizgi: 4K sınırı (25 Mbps) · soluk: otomatik ölçüm"),
         style = st.type(10.sp, color = st.textMuted),
     )
 }
