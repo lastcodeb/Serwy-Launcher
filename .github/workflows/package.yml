@@ -1,7 +1,8 @@
 name: Publish package
 
 # Publishes the APK attached to a release to GitHub Packages (Maven), so the package and the
-# release download are the very same file.
+# release download are the very same file. Re-running is safe: a version that is already
+# published is only verified.
 on:
   release:
     types: [published]
@@ -21,6 +22,7 @@ jobs:
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
       GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/setup-java@v5
         with:
@@ -31,16 +33,40 @@ jobs:
       - name: Download the release APK
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir dist
 
+      - name: Coordinates
+        id: coords
+        run: |
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "repo=https://maven.pkg.github.com/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
+
       - name: Deploy to GitHub Packages
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           apk=$(ls dist/*.apk | head -n 1)
+          if mvn --batch-mode --quiet dependency:get -Dtransitive=false \
+              -Dartifact=dev.mibox:serwy-launcher:${{ steps.coords.outputs.version }}:apk \
+              -DremoteRepositories=github::default::${{ steps.coords.outputs.repo }}; then
+            echo "Version ${{ steps.coords.outputs.version }} is already published"
+            exit 0
+          fi
           mvn --batch-mode deploy:deploy-file \
             -Dfile="$apk" \
             -DgroupId=dev.mibox \
             -DartifactId=serwy-launcher \
-            -Dversion="${TAG#v}" \
+            -Dversion=${{ steps.coords.outputs.version }} \
             -Dpackaging=apk \
             -DrepositoryId=github \
-            -Durl="https://maven.pkg.github.com/${GITHUB_REPOSITORY}"
+            -Durl=${{ steps.coords.outputs.repo }}
+
+      - name: Verify the package matches the release APK
+        run: |
+          v=${{ steps.coords.outputs.version }}
+          rm -rf ~/.m2/repository/dev/mibox
+          mvn --batch-mode --quiet dependency:get -Dtransitive=false \
+            -Dartifact=dev.mibox:serwy-launcher:$v:apk \
+            -DremoteRepositories=github::default::${{ steps.coords.outputs.repo }}
+          pkg=~/.m2/repository/dev/mibox/serwy-launcher/$v/serwy-launcher-$v.apk
+          a=$(sha256sum dist/*.apk | cut -d' ' -f1)
+          b=$(sha256sum "$pkg" | cut -d' ' -f1)
+          echo "release $a"
+          echo "package $b"
+          test "$a" = "$b"
