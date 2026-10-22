@@ -22,15 +22,19 @@ class SystemStats(private val ctx: Context) {
     }
 
     /** Apps among [candidates], most recently visible first; empty without the usage-stats appop. */
-    fun recent(candidates: Set<String>, limit: Int): List<String> {
-        val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyList()
+    fun recent(candidates: Set<String>, limit: Int): List<String> =
+        lastVisible(candidates).entries.sortedByDescending { it.value }.take(limit).map { it.key }
+
+    /** Epoch millis each of [candidates] was last on screen (last 14 days); empty without the usage-stats appop. */
+    fun lastVisible(candidates: Set<String>): Map<String, Long> {
+        val usm = ctx.getSystemService(UsageStatsManager::class.java) ?: return emptyMap()
         val now = System.currentTimeMillis()
         val lastSeen = HashMap<String, Long>()
         for (s in usm.queryUsageStats(UsageStatsManager.INTERVAL_BEST, now - 14 * DAY_MS, now)) {
             if (s.packageName !in candidates || s.lastTimeVisible <= 0) continue
             lastSeen[s.packageName] = maxOf(lastSeen[s.packageName] ?: 0L, s.lastTimeVisible)
         }
-        return lastSeen.entries.sortedByDescending { it.value }.take(limit).map { it.key }
+        return lastSeen
     }
 
     private companion object {

@@ -20,6 +20,10 @@ data class WatchItem(
     val intentUri: String?,
     val progress: Float?,
     val lastEngaged: Long,
+    /** Raw display numbers the app published ("2", "5"); null for movies and clips. */
+    val season: String? = null,
+    val episode: String? = null,
+    val episodeTitle: String? = null,
 )
 
 /**
@@ -94,6 +98,9 @@ object WatchNext {
                     intentUri = str("intent_uri"),
                     progress = if (pos != null && dur != null && dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else null,
                     lastEngaged = num("last_engagement_time_utc_millis") ?: 0L,
+                    season = season,
+                    episode = episode,
+                    episodeTitle = episodeTitle,
                 )
             }
         }

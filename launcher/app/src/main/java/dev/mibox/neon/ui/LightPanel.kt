@@ -58,6 +58,7 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
     val sleepAt by vm.sleepAt.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
+    val st = LocalHomeStyle.current
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
@@ -65,24 +66,22 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 .ignoreOpeningPress()
                 .width(780.dp)
                 .heightIn(max = 500.dp)
-                .clip(PanelShape)
-                .background(Neon.Surface)
-                .border(1.dp, Neon.ChipStroke, PanelShape)
+                .panel(st)
                 .verticalScroll(rememberScrollState())
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("💡  Arka ışık", style = MaterialTheme.typography.headlineSmall.copy(brush = Neon.Gradient))
+                Text(st.plain("💡  Arka ışık"), style = st.headline.fillWith(st.accentBrush, st.titleColor))
                 Spacer(Modifier.width(14.dp))
-                Text(status(ip, wiz), style = MaterialTheme.typography.bodyMedium, color = Neon.TextDim)
+                Text(status(ip, wiz), style = st.body, color = st.textDim)
             }
 
             if (ip == null) {
                 Text(
                     "WiZ Sync Box ağda bulunamadı. Box ile aynı Wi-Fi'da olduğundan ve WiZ uygulamasında " +
                         "\"Yerel iletişime izin ver\" seçeneğinin açık olduğundan emin ol.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = st.body,
                 )
                 Chip("Tekrar ara", onClick = vm::wizRefresh, leading = "🔍", modifier = Modifier.focusRequester(first))
                 return@Column
@@ -123,7 +122,7 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 Chip("", onClick = { vm.wizDim(-10) }, leading = "−")
                 BrightnessBar((wiz?.dimming ?: 0) / 100f)
                 Chip("", onClick = { vm.wizDim(10) }, leading = "+")
-                Text("%${wiz?.dimming ?: 0}", style = MaterialTheme.typography.titleMedium)
+                Text("%${wiz?.dimming ?: 0}", style = st.item)
             }
 
             Section("Renk")
@@ -144,7 +143,7 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 items(Wiz.Scenes, key = { it.first }) { (id, name) ->
                     val preset = "scene:$id"
                     Chip(
-                        if (preset in favorites) "★ $name" else name,
+                        if (preset in favorites) st.star + name else name,
                         onClick = { vm.wizScene(id) },
                         onLongClick = { vm.toggleFavorite(preset) },
                         primary = wiz?.sceneId == id,
@@ -167,7 +166,8 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
 
 @Composable
 private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall, color = Neon.TextDim)
+    val st = LocalHomeStyle.current
+    Text(st.caps(title), style = st.label, color = st.textDim)
 }
 
 @Composable
@@ -185,17 +185,18 @@ private fun Swatch(color: Color, onClick: () -> Unit) {
 
 @Composable
 private fun BrightnessBar(fraction: Float) {
+    val st = LocalHomeStyle.current
     Box(
         Modifier
             .width(360.dp)
             .height(10.dp)
-            .background(Color.White.copy(alpha = 0.1f), Pill),
+            .background(st.track, st.chipShape),
     ) {
         Box(
             Modifier
                 .fillMaxWidth(fraction.coerceIn(0.02f, 1f))
                 .height(10.dp)
-                .background(Neon.Gradient, Pill),
+                .background(st.barBrush, st.chipShape),
         )
     }
 }

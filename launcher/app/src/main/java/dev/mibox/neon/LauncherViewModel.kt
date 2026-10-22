@@ -20,6 +20,13 @@ import dev.mibox.neon.data.AppRepository
 import dev.mibox.neon.data.City
 import dev.mibox.neon.data.DefaultCity
 import dev.mibox.neon.data.FavoriteCard
+import dev.mibox.neon.data.GazeteEdition
+import dev.mibox.neon.data.Headline
+import dev.mibox.neon.data.HeadlineApps
+import dev.mibox.neon.data.HeadlineEngine
+import dev.mibox.neon.data.HeadlineKind
+import dev.mibox.neon.data.HeadlineTarget
+import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.Fixture
 import dev.mibox.neon.data.HeroReason
 import dev.mibox.neon.data.HeroState
@@ -74,13 +81,17 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.time.LocalDate
+import java.time.Instant
+import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.util.Collections
 
 class LauncherViewModel(app: Application) : AndroidViewModel(app) {
@@ -93,6 +104,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val installed = MutableStateFlow<List<AppEntry>?>(null)
     private val draftOrder = MutableStateFlow<List<String>?>(null)
     private val lastUsedPkg = MutableStateFlow<String?>(null)
+    /** Epoch millis each launchable app was last on screen (usage history); empty without usage access. */
+    private val lastSeen = MutableStateFlow<Map<String, Long>>(emptyMap())
 
     private val _moving = MutableStateFlow<String?>(null)
     val moving: StateFlow<String?> = _moving.asStateFlow()
@@ -289,6 +302,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var lastPredictAt = 0L
     private var lastLatencyAt = 0L
     private var lastMatchLiveAt = 0L
+    private var lastSunCheckAt = 0L
     private var lastProbeTry = 0L
 
     /** Runs only between onResumed and onPaused, so nothing here touches the network in the background. */
@@ -303,6 +317,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 maybeAutoProbe(now)
                 if (now - lastMatchLiveAt >= MATCH_LIVE_EVERY_MS) refreshMatchLive()
                 if (now - lastPredictAt >= PREDICT_EVERY_MS) refreshPrediction()
+                if (now - lastSunCheckAt >= SUN_CHECK_EVERY_MS) refreshSun()
             }
         }
     }
@@ -531,6 +546,172 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // --- Home theme, day/night ------------------------------------------------------------------
+    // The initial value is read once, synchronously (a few ms), so a Gazete/Teletext user never sees Neon flash first.
+    val theme: StateFlow<HomeTheme> =
+        prefs.theme.stateIn(viewModelScope, SharingStarted.Eagerly, runBlocking { runCatching { prefs.theme.first() }.getOrDefault(HomeTheme.NEON) })
+
+    fun setTheme(theme: HomeTheme) {
+        viewModelScope.launch { prefs.setTheme(theme) }
+    }
+
+    val gazeteEdition: StateFlow<GazeteEdition> =
+        prefs.gazeteEdition.stateIn(
+            viewModelScope, SharingStarted.Eagerly,
+            runBlocking { runCatching { prefs.gazeteEdition.first() }.getOrDefault(GazeteEdition.AUTO) },
+        )
+
+    fun setGazeteEdition(edition: GazeteEdition) {
+        viewModelScope.launch { prefs.setGazeteEdition(edition) }
+    }
+
+    /** Sunrise and sunset of [city] for [date], in the city's own time zone. */
+    private class SunTimes(val city: City, val date: java.time.LocalDate, val rise: LocalTime, val set: LocalTime)
+
+    private val sun = MutableStateFlow<SunTimes?>(null)
+    private var sunJob: Job? = null
+    private var sunTriedAt = 0L
+
+    /**
+     * True between sunset and the next sunrise of the selected city. Sunrise/sunset come from
+     * Open-Meteo once per day per city (fetched only while home is visible); without them, or
+     * while offline, night is 19:00-07:00 local. Re-evaluated on every ticker round and on resume.
+     */
+    val isNight: StateFlow<Boolean> =
+        combine(sun, city, _clock) { times, c, now ->
+            val t = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalTime()
+            val usable = times?.takeIf { it.city == c }
+            val rise = usable?.rise ?: LocalTime.of(7, 0)
+            val set = usable?.set ?: LocalTime.of(19, 0)
+            t >= set || t < rise
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** The Gazete theme's edition: fixed by the user, or [isNight] on AUTO. */
+    val gazeteNight: StateFlow<Boolean> =
+        combine(gazeteEdition, isNight) { edition, night ->
+            when (edition) {
+                GazeteEdition.NIGHT -> true
+                GazeteEdition.DAY -> false
+                GazeteEdition.AUTO -> night
+            }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    /** Fetches today's sun times when missing for this city (failed attempts are retried after 5 min). */
+    private fun refreshSun() {
+        val now = System.currentTimeMillis()
+        lastSunCheckAt = now
+        val c = city.value
+        val today = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()
+        val have = sun.value
+        if (have != null && have.city == c && have.date == today) return
+        if (sunJob?.isActive == true || now - sunTriedAt < SUN_RETRY_MS) return
+        sunTriedAt = now
+        sunJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching { Weather.sun(c) }
+                .onSuccess { pair ->
+                    if (pair != null) {
+                        sun.value = SunTimes(c, today, pair.first, pair.second)
+                        sunTriedAt = 0L
+                    }
+                }
+                .onFailure { Log.i(TAG, "sun times unavailable: $it") }
+        }
+    }
+
+    // --- Headline ("manset"): the lead story of the Gazete and Teletext themes ---------------------
+    private val headlineApps = object : HeadlineApps {
+        private val categories = HashMap<String, String?>()
+
+        override fun label(pkg: String): String? = appFor(pkg)?.label
+
+        override fun lastSeen(pkg: String): Long? = this@LauncherViewModel.lastSeen.value[pkg]
+
+        override fun category(pkg: String): String? = synchronized(categories) {
+            if (categories.containsKey(pkg)) return@synchronized categories[pkg]
+            run {
+                val cat = runCatching {
+                    getApplication<Application>().packageManager.getApplicationInfo(pkg, 0).category
+                }.getOrNull()
+                when (cat) {
+                    android.content.pm.ApplicationInfo.CATEGORY_GAME -> "Oyun"
+                    android.content.pm.ApplicationInfo.CATEGORY_AUDIO -> "Müzik"
+                    android.content.pm.ApplicationInfo.CATEGORY_VIDEO -> "Video"
+                    android.content.pm.ApplicationInfo.CATEGORY_IMAGE -> "Fotoğraf"
+                    android.content.pm.ApplicationInfo.CATEGORY_SOCIAL -> "Sosyal"
+                    android.content.pm.ApplicationInfo.CATEGORY_NEWS -> "Haber"
+                    android.content.pm.ApplicationInfo.CATEGORY_MAPS -> "Harita"
+                    android.content.pm.ApplicationInfo.CATEGORY_PRODUCTIVITY -> "Araçlar"
+                    android.content.pm.ApplicationInfo.CATEGORY_ACCESSIBILITY -> "Erişilebilirlik"
+                    else -> null
+                }
+            }.also { categories[pkg] = it }
+        }
+    }
+
+    /** Turkish category of an app ("Video", "Oyun"…), or null when it declares none. Cached per package. */
+    fun categoryOf(pkg: String): String? = headlineApps.category(pkg)
+
+    /** Newest finished fixture from the cached fixtures (up to 14 days old), independent of the match card. */
+    val lastResult: StateFlow<MatchState.Finished?> =
+        combine(_fixtures, _clock) { fixtures, now ->
+            fixtures.filter { it.phase == MatchPhase.POST && it.gs != null && it.opp != null && now - it.kickoffMs in 0..MatchConfig.LAST_RESULT_KEEP_MS }
+                .maxByOrNull { it.kickoffMs }?.let(MatchSource::finished)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The next fixture, independent of the card (which may still show an old result). A simulated match wins. */
+    private fun nextFixture(sim: MatchState?, fixtures: List<Fixture>, enabled: Boolean, now: Long): MatchState.Upcoming? {
+        if (sim != null) return sim as? MatchState.Upcoming
+        if (!enabled) return null
+        return fixtures.filter { it.phase == MatchPhase.PRE && it.kickoffMs > now - MatchConfig.LEAD_MS }
+            .minByOrNull { it.kickoffMs }?.let(MatchSource::upcoming)
+    }
+
+    /**
+     * The lead story when nothing is focused: live match, fresh result, match today, Watch Next,
+     * predicted app, match in the next 3 days, last used app, greeting. Never null.
+     */
+    val headline: StateFlow<Headline> =
+        combine(match, _fixtures, _watchNext, hero, _clock) { m, fixtures, watch, h, now ->
+            HeadlineEngine.compute(
+                now = now,
+                match = m,
+                upcoming = nextFixture(_matchSim.value, fixtures, matchEnabled.value, now),
+                watch = watch,
+                hero = h,
+                lights = m != null && matchEnabled.value && wizIp.value != null,
+                apps = headlineApps,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, HeadlineEngine.greeting(System.currentTimeMillis()))
+
+    /** A focused Watch Next / "Senin için" item in headline format. */
+    fun headlineFor(item: WatchItem): Headline {
+        // Items from the Watch Next row are "continue watching"; recommendations and pins are just the app's name
+        val resume = _watchNext.value.any { it.id == item.id }
+        return HeadlineEngine.continueWatching(item, headlineApps, System.currentTimeMillis(), resume)
+    }
+
+    /** A focused app in headline format. */
+    fun headlineFor(app: AppEntry): Headline {
+        val kind = when (app.pkg) {
+            predictedPkg.value -> HeadlineKind.PREDICTED
+            lastUsedPkg.value -> HeadlineKind.LAST_USED
+            else -> HeadlineKind.APP
+        }
+        return HeadlineEngine.forApp(app, kind, headlineApps, System.currentTimeMillis())
+    }
+
+    /**
+     * Performs a headline's action through the usual launch paths (light profile, flash, slow-net
+     * warning). Returns false when nothing was launched: [HeadlineTarget.None], an app that is
+     * gone, or [HeadlineTarget.OpenMatch] with no match app chosen (the UI may open the match panel then).
+     */
+    fun act(target: HeadlineTarget): Boolean = when (target) {
+        is HeadlineTarget.OpenApp -> appFor(target.pkg)?.let { launch(it); true } ?: false
+        is HeadlineTarget.OpenWatch -> { launchWatch(target.item); true }
+        HeadlineTarget.OpenMatch -> launchMatchApp()
+        HeadlineTarget.None -> false
+    }
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             intent.data?.schemeSpecificPart?.let(repo::invalidate)
@@ -540,7 +721,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         reloadApps()
-        viewModelScope.launch { city.drop(1).collect { refreshWeather(force = true) } }
+        viewModelScope.launch { city.drop(1).collect {
+                refreshWeather(force = true)
+                sunTriedAt = 0L
+                if (resumed) refreshSun()
+            } }
         val filter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -623,6 +808,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshUsage()
         refreshNet(latency = true)
         refreshMatch()
+        refreshSun()
         MatchBridge.sink = ::playMatchEffect
         startTicker()
     }
@@ -951,6 +1137,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             val recent = stats.recent(list.mapNotNullTo(HashSet()) { it.pkg.takeIf { p -> p !in homes } }, SHOWCASE_SIZE)
             recentPkgs.value = recent
             lastUsedPkg.value = recent.firstOrNull()
+            lastSeen.value = stats.lastVisible(list.mapNotNullTo(HashSet()) { it.pkg.takeIf { p -> p !in homes } })
         }
     }
 
@@ -1014,6 +1201,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         const val PREDICT_EVERY_MS = 15L * 60 * 1000
         const val LATENCY_EVERY_MS = 5L * 60 * 1000
         const val MATCH_LIVE_EVERY_MS = 60_000L
+        const val SUN_CHECK_EVERY_MS = 5L * 60 * 1000
+        const val SUN_RETRY_MS = 5L * 60 * 1000
         const val PROBE_IDLE_MS = 60_000L
         const val PROBE_RETRY_MS = 5L * 60 * 1000
         const val PROBE_MS = 3_000L

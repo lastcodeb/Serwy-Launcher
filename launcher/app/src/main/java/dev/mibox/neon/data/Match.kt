@@ -43,6 +43,9 @@ object MatchConfig {
     val DelayOptions = listOf(0, 15, 30, 45, 60, 90)
     const val DEFAULT_DELAY_S = 30
 
+    /** The newest finished fixture is cached this long, for the "last result" line. */
+    const val LAST_RESULT_KEEP_MS = 14L * 24 * 60 * 60 * 1000
+
     /** The alarm chain starts this long before kickoff… */
     const val LEAD_MS = 5L * 60 * 1000
 
@@ -233,7 +236,7 @@ object MatchSource {
             competition = comp.label,
             kickoffMs = kickoff,
             home = us.optString("homeAway") == "home",
-            opponent = opp?.optString("displayName").orEmpty().ifEmpty { "Rakip" },
+            opponent = turkishName(opp?.optString("displayName").orEmpty().ifEmpty { "Rakip" }),
             opponentShort = opp?.optString("abbreviation").orEmpty(),
             phase = phase,
             statusName = name,
@@ -252,6 +255,27 @@ object MatchSource {
             is Number -> s.toInt()
             else -> null
         }
+    }
+
+    private val TurkishNames = listOf(
+        "Fenerbahçe", "Beşiktaş", "Başakşehir", "Göztepe", "Kasımpaşa", "Eyüpspor", "Çaykur Rizespor",
+        "Gençlerbirliği", "Fatih Karagümrük", "Kocaelispor", "Gaziantep FK", "Kayserispor", "Konyaspor",
+        "Samsunspor", "Alanyaspor", "Antalyaspor", "Trabzonspor", "Sivasspor", "Hatayspor", "Adana Demirspor",
+        "Ankaragücü", "Bodrum FK", "Pendikspor", "İstanbulspor",
+    ).associateBy { fold(it) }
+
+    /** Lower-case ASCII form used to match ESPN's spelling ("Istanbul Basaksehir") against [TurkishNames]. */
+    private fun fold(name: String): String =
+        java.text.Normalizer.normalize(name.replace('ı', 'i').replace('İ', 'I'), java.text.Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "").lowercase(java.util.Locale.ROOT).trim()
+
+    /** Proper Turkish spelling of a known club name; unknown names are returned unchanged. */
+    fun turkishName(name: String): String {
+        val key = fold(name)
+        TurkishNames[key]?.let { return it }
+        // ESPN prefixes some clubs ("Istanbul Basaksehir", "Caykur Rizespor"): match on the distinctive part
+        if (key == "istanbul basaksehir" || key == "medipol basaksehir" || key == "basaksehir fk") return "Başakşehir"
+        return name
     }
 
     /** Turkish name of a live phase. */
@@ -325,7 +349,7 @@ class MatchStore(ctx: Context) {
             val o = a.getJSONObject(i)
             Fixture(
                 o.getString("id"), o.getString("slug"), o.getString("comp"), o.getLong("ko"), o.getBoolean("home"),
-                o.getString("opp"), o.getString("oppShort"), MatchPhase.valueOf(o.getString("phase")),
+                MatchSource.turkishName(o.getString("opp")), o.getString("oppShort"), MatchPhase.valueOf(o.getString("phase")),
                 o.optString("status"), o.optString("clock"),
                 if (o.has("gs")) o.getInt("gs") else null, if (o.has("os")) o.getInt("os") else null,
             )
@@ -335,7 +359,10 @@ class MatchStore(ctx: Context) {
     /** Keeps only what the card can still need: the last 36 h, and the next few fixtures. */
     fun saveFixtures(all: List<Fixture>, fetchedAt: Long = System.currentTimeMillis()) {
         val now = System.currentTimeMillis()
-        val keep = all.filter { it.kickoffMs > now - 36L * 3_600_000L }.sortedBy { it.kickoffMs }.take(8)
+        val lastResult = all.filter { it.phase == MatchPhase.POST && it.gs != null && it.opp != null && now - it.kickoffMs in 0..MatchConfig.LAST_RESULT_KEEP_MS }
+            .maxByOrNull { it.kickoffMs }
+        val recent = all.filter { it.kickoffMs > now - 36L * 3_600_000L }.sortedBy { it.kickoffMs }.take(8)
+        val keep = if (lastResult != null && recent.none { it.eventId == lastResult.eventId }) listOf(lastResult) + recent else recent
         val a = JSONArray()
         for (f in keep) {
             a.put(

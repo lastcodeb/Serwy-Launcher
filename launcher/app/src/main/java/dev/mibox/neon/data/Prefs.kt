@@ -145,6 +145,24 @@ class Prefs(private val ctx: Context) {
         }.getOrDefault(emptyList())
     }
 
+    // --- Home theme --------------------------------------------------------------------------
+    /** Stored by enum name; a missing or unknown value (older build, renamed theme) is NEON. */
+    val theme: Flow<HomeTheme> = ctx.store.data
+        .map { p -> p[THEME]?.let { n -> HomeTheme.entries.firstOrNull { it.name == n } } ?: HomeTheme.NEON }
+        .distinctUntilChanged()
+
+    val gazeteEdition: Flow<GazeteEdition> = ctx.store.data
+        .map { p -> p[GAZETE_EDITION]?.let { n -> GazeteEdition.entries.firstOrNull { it.name == n } } ?: GazeteEdition.AUTO }
+        .distinctUntilChanged()
+
+    suspend fun setTheme(theme: HomeTheme) {
+        ctx.store.edit { it[THEME] = theme.name }
+    }
+
+    suspend fun setGazeteEdition(edition: GazeteEdition) {
+        ctx.store.edit { it[GAZETE_EDITION] = edition.name }
+    }
+
     // --- Network health ---------------------------------------------------------------------
     /** Last [NetHealth.HISTORY_MAX] speed results, oldest first. */
     val speedHistory: Flow<List<SpeedResult>> = ctx.store.data
@@ -252,5 +270,7 @@ class Prefs(private val ctx: Context) {
         val MATCH_DELAY = intPreferencesKey("match_delay_s")
         val MATCH_GOAL_FX = booleanPreferencesKey("match_goal_fx")
         val MATCH_APP = stringPreferencesKey("match_app")
+        val THEME = stringPreferencesKey("home_theme")
+        val GAZETE_EDITION = stringPreferencesKey("gazete_edition")
     }
 }

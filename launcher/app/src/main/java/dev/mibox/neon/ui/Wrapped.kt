@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -69,6 +70,7 @@ import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppUsage
+import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.PersonaKind
 import dev.mibox.neon.data.WrappedSummary
 import kotlinx.coroutines.delay
@@ -155,6 +157,8 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
     val tint = animateColorAsState(tintOf(tintArt?.vibrant), tween(700), label = "wrappedTint")
 
     val focus = remember { FocusRequester() }
+    val st = LocalHomeStyle.current
+    val neon = st.theme == HomeTheme.NEON
     fun stepMonth(delta: Int) {
         val i = months.indexOf(month)
         val next = months.getOrNull(i + delta)
@@ -197,6 +201,11 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 .drawWithCache {
                     val w = size.width
                     val h = size.height
+                    if (!neon) {
+                        // Plain themed page: no gradient, no glow
+                        val bg = st.background
+                        return@drawWithCache onDrawBehind { drawRect(bg) }
+                    }
                     val base = Brush.linearGradient(
                         0f to Neon.Bg1, 0.55f to Neon.Bg2, 1f to Neon.Bg3,
                         start = Offset.Zero, end = Offset(w, h),
@@ -222,7 +231,7 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                     }
                 },
         ) {
-            Sparkles()
+            if (neon) Sparkles()
             Column(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 24.dp)) {
                 Row(Modifier.fillMaxWidth().height(28.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (slides.isNotEmpty()) {
@@ -232,12 +241,12 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                                     Modifier
                                         .weight(1f)
                                         .height(3.dp)
-                                        .clip(Pill)
+                                        .clip(st.chipShape)
                                         .background(
                                             when {
-                                                i < cur -> Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.85f), Color.White.copy(alpha = 0.85f)))
-                                                i == cur -> Neon.Cta
-                                                else -> Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.2f), Color.White.copy(alpha = 0.2f)))
+                                                i < cur -> SolidColor(st.text.copy(alpha = 0.85f))
+                                                i == cur -> st.ctaBrush ?: SolidColor(st.accent)
+                                                else -> SolidColor(st.text.copy(alpha = 0.2f))
                                             },
                                         ),
                                 )
@@ -252,14 +261,14 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                         Row(
                             Modifier
                                 .height(28.dp)
-                                .background(Neon.ChipFill, Pill)
-                                .border(0.75.dp, Neon.ChipStroke, Pill)
+                                .background(st.chipFill, st.chipShape)
+                                .border(st.chipBorderWidth, st.chipStroke, st.chipShape)
                                 .padding(horizontal = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "${monthName(m)} ${m.year}  ▲▼",
-                                style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, fontWeight = FontWeight.SemiBold),
+                                st.caps("${monthName(m)} ${m.year}") + (if (st.symbols) "  ▲▼" else ""),
+                                style = st.type(12.sp, FontWeight.SemiBold),
                                 maxLines = 1,
                             )
                         }
@@ -272,7 +281,7 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                         WrappedLoad.Loading -> Text(
                             "Yükleniyor…",
                             modifier = Modifier.align(Alignment.Center),
-                            style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, color = Neon.TextDim),
+                            style = st.type(16.sp, color = st.textDim),
                         )
                         WrappedLoad.Empty -> EmptyState(usageAccess)
                         is WrappedLoad.Ready -> {
@@ -300,8 +309,12 @@ fun WrappedScreen(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 }
 
                 Text(
-                    "◀ ▶ gezin" + (if (months.size > 1) "   ▲ ▼ ay değiştir" else "") + "   Geri: kapat",
-                    style = TextStyle(fontFamily = Poppins, fontSize = 11.sp, color = Neon.TextMuted),
+                    if (st.symbols) {
+                        "◀ ▶ gezin" + (if (months.size > 1) "   ▲ ▼ ay değiştir" else "") + "   Geri: kapat"
+                    } else {
+                        st.caps("Sol/sağ: gezin" + (if (months.size > 1) "   Yukarı/aşağı: ay değiştir" else "") + "   Geri: kapat")
+                    },
+                    style = st.type(11.sp, color = st.textMuted),
                 )
             }
         }
@@ -359,29 +372,36 @@ private fun Modifier.popIn(delayMs: Int = 0): Modifier {
 
 @Composable
 private fun Eyebrow(text: String) {
-    Text("— $text", style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Neon.Greeting))
+    val st = LocalHomeStyle.current
+    Text(st.caps("— $text"), style = st.type(14.sp, FontWeight.Medium, st.eyebrow, TextRole.LABEL))
 }
 
-private fun big(size: Int, brush: Brush = Neon.TitleBrush) =
-    TextStyle(fontFamily = Poppins, fontSize = size.sp, fontWeight = FontWeight.Black, letterSpacing = (-1).sp, brush = brush)
+/** Big display line: Neon's gradient, or [flat] where the theme has no gradient. */
+private fun big(st: HomeStyle, size: Int, brush: Brush? = st.titleBrush, flat: Color = st.text) =
+    st.type(size.sp, FontWeight.Black, role = TextRole.DISPLAY)
+        .copy(letterSpacing = st.displayTracking)
+        .fillWith(brush, flat)
 
 @Composable
 private fun EmptyState(usageAccess: Boolean) {
+    val st = LocalHomeStyle.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("📊", style = TextStyle(fontSize = 56.sp), modifier = Modifier.popIn())
-        Spacer(Modifier.height(8.dp))
-        Text("Henüz veri yok", style = big(44), modifier = Modifier.popIn(80))
+        if (st.symbols) {
+            Text("📊", style = TextStyle(fontSize = 56.sp), modifier = Modifier.popIn())
+            Spacer(Modifier.height(8.dp))
+        }
+        Text(st.caps("Henüz veri yok"), style = big(st, 44), modifier = Modifier.popIn(80))
         Spacer(Modifier.height(10.dp))
         Text(
             "Neon Wrapped, kullanım geçmişin biriktikçe oluşur. Birkaç gün sonra tekrar bak.",
             modifier = Modifier.widthIn(max = 560.dp),
-            style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, color = Neon.TextBody),
+            style = st.type(16.sp, color = st.textBody),
         )
         if (!usageAccess) {
             Spacer(Modifier.height(12.dp))
             Text(
                 "Kullanım erişimi verilmemiş. install.ps1 ile izin ver.",
-                style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Neon.Amber),
+                style = st.type(14.sp, FontWeight.SemiBold, st.warn),
             )
         }
     }
@@ -389,30 +409,31 @@ private fun EmptyState(usageAccess: Boolean) {
 
 @Composable
 private fun IntroSlide(s: WrappedSummary) {
+    val st = LocalHomeStyle.current
     val running = s.month == YearMonth.now()
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Eyebrow("Neon Wrapped")
-        Text(monthName(s.month), style = big(75), modifier = Modifier.popIn(60))
+        Text(st.caps(monthName(s.month)), style = big(st, 75), modifier = Modifier.popIn(60))
         Text(
             if (running) "Bu ay (şu ana kadar)" else "${s.month.year}",
-            style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, color = Neon.TextBody),
+            style = st.type(16.sp, color = st.textBody),
         )
         Spacer(Modifier.height(18.dp))
-        Text("Toplam", style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, color = Neon.TextDim))
+        Text("Toplam", style = st.type(14.sp, color = st.textDim))
         Row(verticalAlignment = Alignment.Bottom) {
-            Text(hoursText(s.totalHours), style = big(92, Neon.Gradient), modifier = Modifier.popIn(240))
+            Text(hoursText(s.totalHours), style = big(st, 92, st.accentBrush, st.accent), modifier = Modifier.popIn(240))
             Spacer(Modifier.width(12.dp))
             Text(
                 "saat",
                 modifier = Modifier.padding(bottom = 18.dp),
-                style = TextStyle(fontFamily = Poppins, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Neon.TextSoft),
+                style = st.type(26.sp, FontWeight.Bold, st.textSoft),
             )
         }
         if (s.approximate) {
             Spacer(Modifier.height(6.dp))
             Text(
                 "Bu ay için yalnızca sistemin aylık toplamı var; ayrıntılar gösterilemiyor.",
-                style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextMuted),
+                style = st.type(12.sp, color = st.textMuted),
             )
         }
     }
@@ -432,11 +453,12 @@ private fun AppsSlide(vm: LauncherViewModel, s: WrappedSummary) {
 
 @Composable
 private fun AppUsageRow(vm: LauncherViewModel, a: AppUsage, index: Int, frac: Float) {
+    val st = LocalHomeStyle.current
     Row(Modifier.fillMaxWidth().height(46.dp).popIn(index * 90), verticalAlignment = Alignment.CenterVertically) {
         Text(
             "${index + 1}",
             modifier = Modifier.width(30.dp),
-            style = if (index == 0) big(26, Neon.Gradient) else TextStyle(fontFamily = Poppins, fontSize = 22.sp, fontWeight = FontWeight.Black, color = Neon.TextMuted),
+            style = if (index == 0) big(st, 26, st.accentBrush, st.accent) else st.type(22.sp, FontWeight.Black, st.textMuted, TextRole.DISPLAY),
         )
         MiniBanner(vm, a.pkg)
         Spacer(Modifier.width(14.dp))
@@ -445,14 +467,14 @@ private fun AppUsageRow(vm: LauncherViewModel, a: AppUsage, index: Int, frac: Fl
                 Text(
                     a.label,
                     modifier = Modifier.weight(1f),
-                    style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, fontWeight = FontWeight.Bold),
+                    style = st.type(16.sp, FontWeight.Bold),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
                     "${hoursText(a.hours)} sa · %${(a.share * 100).roundToInt()}",
-                    style = TextStyle(fontFamily = Poppins, fontSize = 13.sp, color = Neon.TextSoft),
+                    style = st.type(13.sp, color = st.textSoft),
                     maxLines = 1,
                 )
             }
@@ -465,30 +487,33 @@ private fun AppUsageRow(vm: LauncherViewModel, a: AppUsage, index: Int, frac: Fl
 /** The fill grows in the draw phase, so the animation costs no layout. */
 @Composable
 private fun ShareBar(frac: Float, delayMs: Int) {
+    val st = LocalHomeStyle.current
     val p = remember { Animatable(0f) }
     LaunchedEffect(frac) {
         delay(delayMs.toLong())
         p.animateTo(frac.coerceIn(0f, 1f), tween(700))
     }
+    val fill = st.barBrush
     Box(
         Modifier
             .fillMaxWidth()
             .height(7.dp)
-            .clip(Pill)
-            .background(Color.White.copy(alpha = 0.1f))
-            .drawBehind { drawRect(Neon.Gradient, size = Size(size.width * p.value, size.height)) },
+            .clip(st.chipShape)
+            .background(st.track)
+            .drawBehind { drawRect(fill, size = Size(size.width * p.value, size.height)) },
     )
 }
 
 @Composable
 private fun MiniBanner(vm: LauncherViewModel, pkg: String) {
+    val st = LocalHomeStyle.current
     val art by produceState<AppArt?>(null, pkg) { value = vm.appFor(pkg)?.let { vm.art(it) } }
     val a = art
     Box(
         Modifier
             .size(width = 76.dp, height = 43.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(a?.cardTop ?: Neon.Bg3),
+            .clip(st.shapeOf(8.dp))
+            .background(a?.cardTop ?: st.placeholder),
         contentAlignment = Alignment.Center,
     ) {
         if (a != null) {
@@ -503,9 +528,10 @@ private fun MiniBanner(vm: LauncherViewModel, pkg: String) {
 
 @Composable
 private fun Fact(label: String, value: String, modifier: Modifier = Modifier, delayMs: Int = 0, extra: @Composable () -> Unit = {}) {
+    val st = LocalHomeStyle.current
     Column(modifier) {
-        Text(label, style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, color = Neon.TextDim))
-        Text(value, style = big(46), maxLines = 1, modifier = Modifier.popIn(delayMs))
+        Text(label, style = st.type(14.sp, color = st.textDim))
+        Text(value, style = big(st, 46), maxLines = 1, modifier = Modifier.popIn(delayMs))
         extra()
     }
 }
@@ -528,6 +554,7 @@ private fun PeakSlide(s: WrappedSummary) {
 
 @Composable
 private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
+    val st = LocalHomeStyle.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Eyebrow("Rekorların")
         Spacer(Modifier.height(18.dp))
@@ -540,7 +567,7 @@ private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
                         Spacer(Modifier.width(10.dp))
                         Text(
                             ls.label,
-                            style = TextStyle(fontFamily = Poppins, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Neon.TextSoft),
+                            style = st.type(15.sp, FontWeight.SemiBold, st.textSoft),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
@@ -556,21 +583,23 @@ private fun RecordsSlide(vm: LauncherViewModel, s: WrappedSummary) {
 
 @Composable
 private fun PersonaSlide(s: WrappedSummary) {
+    val st = LocalHomeStyle.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Eyebrow("Bu ay sen")
-        Text(emojiOf(s.persona.kind), style = TextStyle(fontSize = 72.sp), modifier = Modifier.popIn())
-        Text(s.persona.title, style = big(54), maxLines = 1, modifier = Modifier.popIn(120))
+        if (st.symbols) Text(emojiOf(s.persona.kind), style = TextStyle(fontSize = 72.sp), modifier = Modifier.popIn())
+        Text(s.persona.title, style = big(st, 54), maxLines = 1, modifier = Modifier.popIn(120))
         Spacer(Modifier.height(8.dp))
         Text(
             s.persona.blurb,
             modifier = Modifier.widthIn(max = 620.dp),
-            style = TextStyle(fontFamily = Poppins, fontSize = 18.sp, color = Neon.TextBody),
+            style = st.type(18.sp, color = st.textBody),
         )
     }
 }
 
 @Composable
 private fun ChangeSlide(s: WrappedSummary) {
+    val st = LocalHomeStyle.current
     val p = s.changePercent
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Eyebrow("Geçen aya göre")
@@ -580,20 +609,24 @@ private fun ChangeSlide(s: WrappedSummary) {
                 p < 0 -> "−"
                 else -> ""
             }
-            Text("$sign%${abs(p)}", style = big(92, if (p >= 0) Neon.Gradient else Neon.TitleBrush), modifier = Modifier.popIn(60))
+            Text(
+                "$sign%${abs(p)}",
+                style = if (p >= 0) big(st, 92, st.accentBrush, st.accent) else big(st, 92),
+                modifier = Modifier.popIn(60),
+            )
             Text(
                 when {
                     p > 0 -> "daha fazla izledin"
                     p < 0 -> "daha az izledin"
                     else -> "aynı kadar izledin"
                 },
-                style = TextStyle(fontFamily = Poppins, fontSize = 18.sp, color = Neon.TextBody),
+                style = st.type(18.sp, color = st.textBody),
             )
         } else {
             Spacer(Modifier.height(6.dp))
             Text(
                 "Karşılaştırma için önceki ay verisi yok",
-                style = TextStyle(fontFamily = Poppins, fontSize = 20.sp, color = Neon.TextBody),
+                style = st.type(20.sp, color = st.textBody),
             )
         }
         Spacer(Modifier.height(24.dp))
@@ -606,8 +639,9 @@ private fun ChangeSlide(s: WrappedSummary) {
 
 @Composable
 private fun SmallStat(label: String, value: String) {
+    val st = LocalHomeStyle.current
     Column {
-        Text(value, style = TextStyle(fontFamily = Poppins, fontSize = 30.sp, fontWeight = FontWeight.Black))
-        Text(label, style = TextStyle(fontFamily = Poppins, fontSize = 13.sp, color = Neon.TextDim))
+        Text(value, style = st.type(30.sp, FontWeight.Black, role = TextRole.DISPLAY))
+        Text(label, style = st.type(13.sp, color = st.textDim))
     }
 }

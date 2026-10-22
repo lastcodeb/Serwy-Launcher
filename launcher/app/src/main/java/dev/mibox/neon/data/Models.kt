@@ -89,3 +89,9 @@ sealed interface SpeedState {
     data class Done(val mbps: Double) : SpeedState
     data object Failed : SpeedState
 }
+
+/** The selectable home-screen design. NEON is the original and the default. */
+enum class HomeTheme { NEON, GAZETE, TELETEXT }
+
+/** Which edition of the Gazete theme: follows sunrise/sunset (AUTO) or is fixed. */
+enum class GazeteEdition { AUTO, DAY, NIGHT }

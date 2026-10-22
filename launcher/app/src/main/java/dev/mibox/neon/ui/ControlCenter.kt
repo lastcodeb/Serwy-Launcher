@@ -1,7 +1,6 @@
 package dev.mibox.neon.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,18 +10,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +28,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
+import dev.mibox.neon.data.HomeTheme
+import dev.mibox.neon.data.SpeedResult
 import dev.mibox.neon.data.SpeedState
 import dev.mibox.neon.data.Weather
 import dev.mibox.neon.data.Wiz
@@ -38,7 +37,6 @@ import kotlinx.coroutines.delay
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-private val PanelShape = RoundedCornerShape(28.dp)
 private val BigTime = DateTimeFormatter.ofPattern("HH:mm", TR)
 private val LongDate = DateTimeFormatter.ofPattern("d MMMM EEEE", TR)
 
@@ -52,7 +50,9 @@ fun ControlCenter(
     onOpenNet: () -> Unit,
     onOpenWrapped: () -> Unit,
     onOpenMatch: () -> Unit,
+    onOpenTheme: () -> Unit,
 ) {
+    val st = LocalHomeStyle.current
     val hidden by vm.hiddenApps.collectAsStateWithLifecycle()
     val wrappedBadge by vm.wrappedBadge.collectAsStateWithLifecycle()
     val now by rememberNow()
@@ -61,6 +61,7 @@ fun ControlCenter(
     val ram by vm.ram.collectAsStateWithLifecycle()
     val freed by vm.freed.collectAsStateWithLifecycle()
     val speed by vm.speed.collectAsStateWithLifecycle()
+    val net by vm.netNow.collectAsStateWithLifecycle()
     val wizIp by vm.wizIp.collectAsStateWithLifecycle()
     val wiz by vm.wiz.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
@@ -72,34 +73,32 @@ fun ControlCenter(
             Modifier
                 .ignoreOpeningPress()
                 .width(820.dp)
-                .clip(PanelShape)
-                .background(Neon.Surface)
-                .border(1.dp, Neon.ChipStroke, PanelShape)
+                .panel(st)
                 .padding(32.dp),
             horizontalArrangement = Arrangement.spacedBy(36.dp),
         ) {
             Column(Modifier.width(270.dp)) {
                 Text(
                     now.format(BigTime),
-                    style = TextStyle(fontFamily = Poppins, fontSize = 68.sp, fontWeight = FontWeight.Black, brush = Neon.TitleBrush),
+                    style = st.type(68.sp, FontWeight.Black, role = TextRole.DISPLAY).fillWith(st.titleBrush, st.text),
                 )
                 Text(
                     now.format(LongDate),
-                    style = TextStyle(fontFamily = Poppins, fontSize = 15.sp, color = Neon.TextSoft),
+                    style = st.type(15.sp, color = st.textSoft),
                 )
                 Spacer(Modifier.height(26.dp))
                 val w = weather
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    WeatherIcon(w, Modifier.size(width = 52.dp, height = 32.dp))
+                    WeatherIcon(w, Modifier.size(width = 52.dp, height = 32.dp), st.weatherIcon)
                     Spacer(Modifier.width(14.dp))
                     Text(
                         w?.let { "${it.tempC.roundToInt()}°" } ?: "–°",
-                        style = TextStyle(fontFamily = Poppins, fontSize = 40.sp, fontWeight = FontWeight.Bold),
+                        style = st.type(40.sp, FontWeight.Bold, role = TextRole.DISPLAY),
                     )
                 }
                 Text(
                     listOfNotNull(w?.let { Weather.describe(it.code, it.isDay).second }, city.name).joinToString(" · "),
-                    style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, color = Neon.TextDim),
+                    style = st.type(14.sp, color = st.textDim),
                 )
             }
 
@@ -130,11 +129,18 @@ fun ControlCenter(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     val f = freed
                     Chip(
-                        if (f != null) "Kapatıldı · +${f / (1024 * 1024)} MB" else "Arka plandaki uygulamaları kapat · RAM %${ram.usedPercent}",
+                        if (f != null) {
+                            "Kapatıldı · +${f / (1024 * 1024)} MB"
+                        } else if (st.theme == HomeTheme.NEON) {
+                            "Arka plandaki uygulamaları kapat · RAM %${ram.usedPercent}"
+                        } else {
+                            // Shorter: the wide fonts would squeeze the speed chip beside it
+                            "Belleği boşalt · RAM %${ram.usedPercent}"
+                        },
                         onClick = vm::boost,
                         leading = "⚡",
                     )
-                    Chip(speedLabel(speed), onClick = vm::runSpeedTest, leading = "📶")
+                    Chip(speedLabel(speed, net.last), onClick = vm::runSpeedTest, leading = "📶", modifier = if (st.theme == HomeTheme.NEON) Modifier else Modifier.widthIn(min = 100.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (wizIp != null) Chip(sleepLabel(sleepAt), onClick = vm::wizCycleSleep, leading = "🌙")
@@ -142,6 +148,7 @@ fun ControlCenter(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Chip("Gizli uygulamalar (${hidden.size}) · Şehir", onClick = onOpenMenu, leading = "👁")
+                    Chip("Tema", onClick = onOpenTheme, leading = "🎨")
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -154,7 +161,7 @@ fun ControlCenter(
                         leading = "✨",
                         // Unseen summary of last month
                         trailing = if (wrappedBadge) {
-                            { Box(Modifier.size(7.dp).background(Neon.Pink, CircleShape)) }
+                            { Box(Modifier.size(7.dp).background(st.accent, CircleShape)) }
                         } else {
                             null
                         },
@@ -174,11 +181,12 @@ fun ControlCenter(
 
 @Composable
 private fun Section(title: String, status: String?) {
+    val st = LocalHomeStyle.current
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(title, style = TextStyle(fontFamily = Poppins, fontSize = 15.sp, fontWeight = FontWeight.Bold))
+        Text(st.caps(title), style = st.type(15.sp, FontWeight.Bold, role = TextRole.LABEL))
         if (status != null) {
             Spacer(Modifier.width(10.dp))
-            Text(status, style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextMuted))
+            Text(st.caps(status), style = st.type(12.sp, color = st.textMuted, role = TextRole.LABEL))
         }
     }
 }
@@ -191,8 +199,9 @@ private fun lightStatus(ip: String?, p: dev.mibox.neon.data.WizPilot?): String =
     else -> "açık · %${p.dimming}"
 }
 
-private fun speedLabel(s: SpeedState): String = when (s) {
-    SpeedState.Idle -> "Hız testi"
+private fun speedLabel(s: SpeedState, last: SpeedResult?): String = when (s) {
+    // After a restart nothing has run yet: show the newest saved result, as the top bar does
+    SpeedState.Idle -> last?.let { "${String.format(TR, "%.1f", it.mbps)} Mbps" } ?: "Hız testi"
     is SpeedState.Running -> if (s.mbps == 0.0) "Ölçülüyor…" else "${String.format(TR, "%.1f", s.mbps)} Mbps"
     is SpeedState.Done -> "${String.format(TR, "%.1f", s.mbps)} Mbps"
     SpeedState.Failed -> "Bağlantı yok"

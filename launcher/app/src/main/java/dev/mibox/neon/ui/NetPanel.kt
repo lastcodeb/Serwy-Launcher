@@ -43,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
+import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.LinkType
 import dev.mibox.neon.data.NetHealth
 import dev.mibox.neon.data.NetVerdict
@@ -94,6 +95,7 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
     val history by vm.netHistory.collectAsStateWithLifecycle()
     val speed by vm.speed.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
+    val st = LocalHomeStyle.current
     // A fresh ping whenever the card opens
     LaunchedEffect(Unit) { vm.refreshNet(latency = true) }
 
@@ -103,15 +105,13 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 .ignoreOpeningPress()
                 .width(700.dp)
                 .heightIn(max = 500.dp)
-                .clip(PanelShape)
-                .background(Neon.Surface)
-                .border(1.dp, Neon.ChipStroke, PanelShape)
+                .panel(st)
                 .verticalScroll(rememberScrollState())
                 .padding(28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("📡  Ağ durumu", style = MaterialTheme.typography.headlineSmall.copy(brush = Neon.Gradient))
+                Text(st.plain("📡  Ağ durumu"), style = st.headline.fillWith(st.accentBrush, st.titleColor))
                 Spacer(Modifier.weight(1f))
                 VerdictBadge(net.verdict)
             }
@@ -136,14 +136,14 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                         Text(
                             agoText(last.at) + if (last.auto) " · otomatik" else "",
                             modifier = Modifier.align(Alignment.End),
-                            style = TextStyle(fontFamily = Poppins, fontSize = 11.sp, color = Neon.TextMuted),
+                            style = st.type(11.sp, color = st.textMuted),
                         )
                     }
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         "Son ${history.size} ölçüm",
-                        style = TextStyle(fontFamily = Poppins, fontSize = 13.sp, color = Neon.TextDim),
+                        style = st.type(13.sp, color = st.textDim),
                     )
                     HistoryChart(history)
                 }
@@ -166,21 +166,23 @@ fun NetPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
 
 @Composable
 private fun VerdictBadge(v: NetVerdict) {
-    val c = verdictColor(v)
+    val st = LocalHomeStyle.current
+    val c = st.verdict(v)
     Row(
-        Modifier.height(30.dp).background(c.copy(alpha = 0.16f), Pill).padding(horizontal = 14.dp),
+        Modifier.height(30.dp).background(c.copy(alpha = 0.16f), st.chipShape).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).background(c, CircleShape))
         Spacer(Modifier.width(8.dp))
-        Text(verdictText(v), style = TextStyle(fontFamily = Poppins, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = c))
+        Text(st.caps(verdictText(v)), style = st.type(13.sp, FontWeight.SemiBold, c))
     }
 }
 
 @Composable
 private fun StatRow(label: String, value: @Composable RowScope.() -> Unit) {
+    val st = LocalHomeStyle.current
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = TextStyle(fontFamily = Poppins, fontSize = 13.sp, color = Neon.TextDim))
+        Text(label, style = st.type(13.sp, color = st.textDim))
         Spacer(Modifier.weight(1f))
         value()
     }
@@ -188,22 +190,27 @@ private fun StatRow(label: String, value: @Composable RowScope.() -> Unit) {
 
 @Composable
 private fun StatText(text: String) {
-    Text(text, style = TextStyle(fontFamily = Poppins, fontSize = 14.sp, fontWeight = FontWeight.SemiBold))
+    val st = LocalHomeStyle.current
+    Text(text, style = st.type(14.sp, FontWeight.SemiBold))
 }
 
 /** Four bars, filled up to [bars] (0..4). */
 @Composable
 private fun SignalBars(bars: Int?) {
+    val st = LocalHomeStyle.current
+    val on = st.ok
+    val off = st.text.copy(alpha = 0.18f)
+    val round = st.theme == HomeTheme.NEON
     Canvas(Modifier.size(width = 22.dp, height = 16.dp)) {
         val bw = size.width / 5.5f
         val gap = bw * 0.5f
         for (i in 0 until 4) {
             val h = size.height * (i + 1) / 4f
             drawRoundRect(
-                color = if (i < (bars ?: 0)) Neon.Ok else Color.White.copy(alpha = 0.18f),
+                color = if (i < (bars ?: 0)) on else off,
                 topLeft = Offset(i * (bw + gap), size.height - h),
                 size = Size(bw, h),
-                cornerRadius = CornerRadius(1.dp.toPx()),
+                cornerRadius = CornerRadius(if (round) 1.dp.toPx() else 0f),
             )
         }
     }
@@ -212,21 +219,27 @@ private fun SignalBars(bars: Int?) {
 /** One bar per result, newest at the right edge, colored by what it means for streaming. */
 @Composable
 private fun HistoryChart(history: List<SpeedResult>) {
+    val st = LocalHomeStyle.current
     if (history.isEmpty()) {
         Text(
             "Henüz ölçüm yok. Hız testi yapınca burada görünür.",
-            style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextMuted),
+            style = st.type(12.sp, color = st.textMuted),
         )
         return
     }
     val top = maxOf(history.maxOf { it.mbps }, 30.0).toFloat()
+    val line = st.text.copy(alpha = 0.2f)
+    val ok = st.ok
+    val warn = st.warn
+    val danger = st.danger
+    val round = st.theme == HomeTheme.NEON
     Canvas(Modifier.fillMaxWidth().height(90.dp)) {
         val slot = size.width / NetHealth.HISTORY_MAX
         val bw = slot * 0.62f
         // The 4K threshold
         val y25 = size.height * (1f - NetHealth.UHD_MBPS.toFloat() / top)
         drawLine(
-            Color.White.copy(alpha = 0.2f),
+            line,
             Offset(0f, y25),
             Offset(size.width, y25),
             strokeWidth = 1.dp.toPx(),
@@ -235,26 +248,26 @@ private fun HistoryChart(history: List<SpeedResult>) {
         history.forEachIndexed { i, r ->
             val h = (size.height * (r.mbps.toFloat() / top)).coerceAtLeast(2.dp.toPx())
             val color = when {
-                r.mbps >= NetHealth.UHD_MBPS -> Neon.Ok
-                r.mbps >= NetHealth.HD_MBPS -> Neon.Amber
-                else -> Neon.Danger
+                r.mbps >= NetHealth.UHD_MBPS -> ok
+                r.mbps >= NetHealth.HD_MBPS -> warn
+                else -> danger
             }
             drawRoundRect(
                 color = color.copy(alpha = if (r.auto) 0.55f else 1f),
                 topLeft = Offset(size.width - (history.size - i) * slot + (slot - bw) / 2f, size.height - h),
                 size = Size(bw, h),
-                cornerRadius = CornerRadius(bw / 2f),
+                cornerRadius = CornerRadius(if (round) bw / 2f else 0f),
             )
         }
     }
     Row(Modifier.fillMaxWidth()) {
-        val small = TextStyle(fontFamily = Poppins, fontSize = 11.sp, color = Neon.TextMuted)
+        val small = st.type(11.sp, color = st.textMuted)
         Text("min ${oneDecimal(history.minOf { it.mbps })}", style = small)
         Spacer(Modifier.weight(1f))
         Text("maks ${oneDecimal(history.maxOf { it.mbps })} Mbps", style = small)
     }
     Text(
         "Kesik çizgi: 4K sınırı (25 Mbps) · soluk: otomatik ölçüm",
-        style = TextStyle(fontFamily = Poppins, fontSize = 10.sp, color = Neon.TextMuted),
+        style = st.type(10.sp, color = st.textMuted),
     )
 }

@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import dev.mibox.neon.LauncherViewModel
+import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.MatchConfig
 import dev.mibox.neon.data.MatchResult
 import dev.mibox.neon.data.MatchSamples
@@ -105,10 +106,10 @@ private fun resultText(r: MatchResult) = when (r) {
     MatchResult.LOSS -> "Mağlubiyet"
 }
 
-private fun resultColor(r: MatchResult) = when (r) {
-    MatchResult.WIN -> Neon.Ok
-    MatchResult.DRAW -> Neon.Amber
-    MatchResult.LOSS -> Neon.Danger
+private fun resultColor(r: MatchResult, st: HomeStyle) = when (r) {
+    MatchResult.WIN -> st.ok
+    MatchResult.DRAW -> st.warn
+    MatchResult.LOSS -> st.danger
 }
 
 /** Red dot that breathes while a match is live; the alpha animates in the graphics layer only. */
@@ -137,7 +138,8 @@ private fun PulseDot() {
 @Composable
 fun MatchChip(m: MatchState?, nowMs: Long, onOpen: () -> Unit) {
     val team = MatchConfig.Team
-    val style = BarText.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    val st = LocalHomeStyle.current
+    val style = st.bar(11.sp, FontWeight.SemiBold)
     NeonSurface(
         onClick = onOpen,
         modifier = Modifier.height(35.dp).widthIn(max = 170.dp),
@@ -151,13 +153,13 @@ fun MatchChip(m: MatchState?, nowMs: Long, onOpen: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Red over yellow
-            Column(Modifier.size(width = 4.dp, height = 17.dp).clip(Pill)) {
+            Column(Modifier.size(width = 4.dp, height = 17.dp).clip(st.chipShape)) {
                 Box(Modifier.weight(1f).fillMaxWidth().background(team.primary))
                 Box(Modifier.weight(1f).fillMaxWidth().background(team.secondary))
             }
             Spacer(Modifier.width(6.dp))
             when (m) {
-                null -> Text("Yaklaşan maç yok", style = style.copy(color = Neon.TextSoft), maxLines = 1)
+                null -> Text("Yaklaşan maç yok", style = style.copy(color = st.textSoft), maxLines = 1)
                 is MatchState.Upcoming -> Text(
                     "${oppShort(m)} · ${upcomingWhen(m, nowMs)}",
                     style = style,
@@ -177,7 +179,7 @@ fun MatchChip(m: MatchState?, nowMs: Long, onOpen: () -> Unit) {
                 }
                 is MatchState.Finished -> {
                     Text("${team.shortName} ${m.gsScore}–${m.oppScore} ${oppShort(m)} · ", style = style, maxLines = 1)
-                    Text(resultText(m.result), style = style.copy(color = resultColor(m.result)), maxLines = 1)
+                    Text(resultText(m.result), style = style.copy(color = resultColor(m.result, st)), maxLines = 1)
                 }
             }
         }
@@ -203,6 +205,7 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
     // Leaving the picker puts focus back on the button that opened it
     var focusApp by remember { mutableStateOf(false) }
     val team = MatchConfig.Team
+    val st = LocalHomeStyle.current
     val closePicker = {
         focusApp = !launchAfterPick
         picking = false
@@ -219,18 +222,16 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 .ignoreOpeningPress()
                 .width(820.dp)
                 .heightIn(max = 500.dp)
-                .clip(PanelShape)
-                .background(Neon.Surface)
-                .border(1.dp, Neon.ChipStroke, PanelShape)
+                .panel(st)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (picking) {
-                Text("📺  Maç uygulaması", style = MaterialTheme.typography.headlineSmall)
+                Text(st.plain("📺  Maç uygulaması"), style = st.headline)
                 Text(
                     if (launchAfterPick) "Seçtiğin uygulamada maçı açarım" else "Maçı izlediğin uygulamayı seç",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Neon.TextDim,
+                    style = st.body,
+                    color = st.textDim,
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Chip(
@@ -248,7 +249,7 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 ) {
                     items(apps, key = { it.pkg }) { app ->
                         Chip(
-                            (if (app.pkg == appPkg) "✓  " else "") + app.label,
+                            st.mark(app.pkg == appPkg, spaces = 2) + app.label,
                             onClick = {
                                 vm.setMatchApp(app.pkg)
                                 if (launchAfterPick) {
@@ -307,7 +308,7 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                         }
                         Text(
                             "Yayın geç kalıyorsa ışık golü ekrandan önce göstermesin diye bekler.",
-                            style = TextStyle(fontFamily = Poppins, fontSize = 11.sp, color = Neon.TextMuted),
+                            style = st.type(11.sp, color = st.textMuted),
                         )
 
                         Section("Maçı izlediğim uygulama")
@@ -346,15 +347,20 @@ private fun MatchLeft(
     onDismiss: () -> Unit,
     onPickApp: () -> Unit,
 ) {
+    val st = LocalHomeStyle.current
+    // The team's red-to-yellow gradient is Neon's; the others set the title flat
     Text(
-        "⚽  Maç günü",
-        style = MaterialTheme.typography.headlineSmall.copy(brush = Brush.horizontalGradient(listOf(red, yellow))),
+        st.plain("⚽  Maç günü"),
+        style = st.headline.fillWith(
+            if (st.theme == HomeTheme.NEON) Brush.horizontalGradient(listOf(red, yellow)) else null,
+            st.titleColor,
+        ),
     )
     if (m != null) {
         Scoreboard(m)
     } else {
         // Same card, nothing to show
-        val shape = RoundedCornerShape(20.dp)
+        val shape = st.shapeOf(20.dp)
         Column(
             Modifier
                 .fillMaxWidth()
@@ -365,10 +371,10 @@ private fun MatchLeft(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text("Yaklaşan maç yok", style = TextStyle(fontFamily = Poppins, fontSize = 18.sp, fontWeight = FontWeight.Bold))
+            Text("Yaklaşan maç yok", style = st.type(18.sp, FontWeight.Bold, role = TextRole.HEADLINE))
             Text(
                 if (enabled) "Fikstür yüklenemedi ya da sezon arasındasın. Biraz sonra tekrar bakılır." else "Maç günü kapalı. Sağdan açabilirsin.",
-                style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextDim),
+                style = st.type(12.sp, color = st.textDim),
             )
         }
     }
@@ -386,14 +392,16 @@ private fun MatchLeft(
 
 @Composable
 private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.titleSmall, color = Neon.TextDim)
+    val st = LocalHomeStyle.current
+    Text(st.caps(title), style = st.label, color = st.textDim)
 }
 
 /** Home side first, like a stadium board; scores arrive Galatasaray-first, so they are swapped for away games. */
 @Composable
 private fun Scoreboard(m: MatchState) {
     val team = MatchConfig.Team
-    val shape = RoundedCornerShape(20.dp)
+    val st = LocalHomeStyle.current
+    val shape = st.shapeOf(20.dp)
     Column(
         Modifier
             .fillMaxWidth()
@@ -417,27 +425,29 @@ private fun Scoreboard(m: MatchState) {
         }
         Text(
             "${m.competition} · ${if (m.home) "İç saha" else "Deplasman"}",
-            style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextDim),
+            style = st.type(12.sp, color = st.textDim),
         )
     }
 }
 
 @Composable
 private fun TeamSide(short: String, full: String, ours: Boolean, modifier: Modifier) {
+    val st = LocalHomeStyle.current
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             short,
-            style = TextStyle(
-                fontFamily = Poppins,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Black,
-                color = if (ours) MatchConfig.Team.secondary else Color.White,
+            style = st.type(
+                26.sp,
+                FontWeight.Black,
+                // The team's yellow only reads on Neon's dark glass
+                if (ours && st.theme == HomeTheme.NEON) MatchConfig.Team.secondary else st.text,
+                TextRole.DISPLAY,
             ),
             maxLines = 1,
         )
         Text(
             full,
-            style = TextStyle(fontFamily = Poppins, fontSize = 12.sp, color = Neon.TextDim),
+            style = st.type(12.sp, color = st.textDim),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -448,8 +458,9 @@ private fun score(m: MatchState, gs: Int, opp: Int) = if (m.home) "$gs – $opp"
 
 @Composable
 private fun Middle(m: MatchState) {
-    val big = TextStyle(fontFamily = Poppins, fontSize = 36.sp, fontWeight = FontWeight.Black, brush = Neon.TitleBrush)
-    val small = TextStyle(fontFamily = Poppins, fontSize = 11.sp, color = Neon.TextDim)
+    val st = LocalHomeStyle.current
+    val big = st.type(36.sp, FontWeight.Black, role = TextRole.DISPLAY).fillWith(st.titleBrush, st.text)
+    val small = st.type(11.sp, color = st.textDim)
     Column(Modifier.width(150.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         when (m) {
             is MatchState.Upcoming -> {
@@ -473,7 +484,7 @@ private fun Middle(m: MatchState) {
             is MatchState.Finished -> {
                 Text(score(m, m.gsScore, m.oppScore), style = big, maxLines = 1)
                 Text("Maç bitti", style = small, maxLines = 1)
-                Text(resultText(m.result), style = small.copy(color = resultColor(m.result), fontWeight = FontWeight.Bold), maxLines = 1)
+                Text(resultText(m.result), style = small.copy(color = resultColor(m.result, st), fontWeight = FontWeight.Bold), maxLines = 1)
             }
         }
     }

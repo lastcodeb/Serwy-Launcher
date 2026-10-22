@@ -3,6 +3,7 @@ package dev.mibox.neon.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.FirstBaseline
@@ -39,8 +41,10 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Glow
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import dev.mibox.neon.data.HomeTheme
 import kotlinx.coroutines.delay
 
 val Pill = RoundedCornerShape(50)
@@ -54,41 +58,78 @@ fun NeonSurface(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: (() -> Unit)? = null,
-    shape: Shape = Pill,
+    shape: Shape? = null,
     glowColor: Color = Color.White,
     idleGlow: Glow = Glow.None,
     focusedScale: Float = 1.05f,
-    container: Color = Neon.ChipFill,
-    focusedContainer: Color = Neon.ChipFillFocused,
-    stroke: Color = Neon.ChipStroke,
-    strokeWidth: Dp = 0.75.dp,
+    container: Color? = null,
+    focusedContainer: Color? = null,
+    stroke: Color? = null,
+    strokeWidth: Dp? = null,
     brush: Brush? = null,
+    emphasis: Boolean = false,
     interactionSource: MutableInteractionSource? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    // Skinned by the active home theme. Null color/shape/width parameters mean "the theme's
+    // default"; the Neon branch of every expression below is exactly the original look.
+    // [brush] and [shape] are Neon-only; [emphasis] (primary button) is for the other themes
+    // (Neon expresses it with a brush). One Surface call for all themes, so a theme switch
+    // keeps the node, and with it the focus.
+    val st = LocalHomeStyle.current
+    val neon = st.theme == HomeTheme.NEON
+    val src = interactionSource ?: remember { MutableInteractionSource() }
+    val s: Shape = if (neon) shape ?: Pill else RectangleShape
+    val inverse = st.focusStyle == FocusStyle.INVERSE
+
+    val idleFill = container ?: if (emphasis && !neon) st.accent2 else st.chipFill
+    val focusFill = focusedContainer ?: when {
+        emphasis && !neon -> if (inverse) st.focus else st.accent2
+        else -> st.chipFillFocused
+    }
+    val idleContent = if (neon) Neon.Text else if (emphasis) st.onAccent else st.text
+    val focusContent = if (neon) Color.White else if (inverse) st.onFocus else idleContent
+
+    val width = strokeWidth ?: st.chipBorderWidth
+    val idleStroke = BorderStroke(width, stroke ?: st.chipStroke)
+    val focusStroke = when {
+        neon -> BorderStroke(1.5.dp, Color.White.copy(alpha = 0.85f))
+        inverse -> BorderStroke(width, st.focus)
+        else -> idleStroke
+    }
+
+    // Gazete: the red loop is drawn from the focus state in the draw phase
+    val pen = st.focusStyle == FocusStyle.PEN_CIRCLE
+    val penFocused = if (pen) src.collectIsFocusedAsState() else null
+    val m = if (penFocused != null) {
+        modifier.penCircle(penFocused, if (emphasis) st.text else st.focus)
+    } else {
+        modifier
+    }
+
     Surface(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier,
-        shape = ClickableSurfaceDefaults.shape(shape),
+        modifier = m,
+        shape = ClickableSurfaceDefaults.shape(s),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = container,
-            contentColor = Neon.Text,
-            focusedContainerColor = focusedContainer,
-            focusedContentColor = Color.White,
-            pressedContainerColor = focusedContainer,
-            pressedContentColor = Color.White,
+            containerColor = idleFill,
+            contentColor = idleContent,
+            focusedContainerColor = focusFill,
+            focusedContentColor = focusContent,
+            pressedContainerColor = focusFill,
+            pressedContentColor = focusContent,
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = if (neon) focusedScale else 1f),
         border = ClickableSurfaceDefaults.border(
-            border = Border(BorderStroke(strokeWidth, stroke), shape = shape),
-            focusedBorder = Border(BorderStroke(1.5.dp, Color.White.copy(alpha = 0.85f)), shape = shape),
+            border = Border(idleStroke, shape = s),
+            focusedBorder = Border(focusStroke, shape = s),
         ),
         glow = ClickableSurfaceDefaults.glow(
-            glow = idleGlow,
-            focusedGlow = Glow(glowColor.copy(alpha = 0.45f), 12.dp),
+            glow = if (neon) idleGlow else Glow.None,
+            focusedGlow = if (neon) Glow(glowColor.copy(alpha = 0.45f), 12.dp) else Glow.None,
         ),
-        interactionSource = interactionSource,
+        interactionSource = src,
     ) {
         if (brush != null) Box(Modifier.matchParentSize().background(brush))
         content()
@@ -107,28 +148,36 @@ fun Chip(
     onLongClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
+    val st = LocalHomeStyle.current
     NeonSurface(
         onClick = onClick,
         onLongClick = onLongClick,
         modifier = modifier.height(35.dp),
-        brush = if (primary) Neon.Cta else null,
-        stroke = if (primary) Color.Transparent else Neon.ChipStroke,
-        glowColor = if (primary) Neon.Pink else Color.White,
+        brush = if (primary) st.ctaBrush else null,
+        stroke = if (primary) Color.Transparent else null,
+        glowColor = if (primary) st.accent else Color.White,
+        emphasis = primary,
     ) {
         Row(
             Modifier.fillMaxHeight().padding(horizontal = 15.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = Neon.Icon)
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (st.theme == HomeTheme.NEON) Neon.Icon else LocalContentColor.current,
+                )
                 if (text.isNotEmpty()) Spacer(Modifier.width(8.dp))
             }
-            if (leading != null) {
-                Text(leading, style = BarText.copy(fontSize = 14.sp))
+            // Emoji only where the theme can show them; a lone "−" / "+" is the button itself
+            if (leading != null && (st.symbols || text.isEmpty())) {
+                Text(leading, style = st.bar(14.sp))
                 if (text.isNotEmpty()) Spacer(Modifier.width(8.dp))
             }
             if (text.isNotEmpty()) {
-                Text(text, style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
+                Text(st.caps(text), style = st.bar(13.sp, FontWeight.SemiBold), maxLines = 1)
             }
             if (trailing != null) {
                 Spacer(Modifier.width(8.dp))

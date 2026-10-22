@@ -246,8 +246,8 @@ private fun DrawScope.drawBolt() {
 
 /** Tiny line-art weather glyphs in the design's cloud color. */
 @Composable
-fun WeatherIcon(w: WeatherNow?, modifier: Modifier) {
-    val c = Neon.WeatherIcon.copy(alpha = 0.9f)
+fun WeatherIcon(w: WeatherNow?, modifier: Modifier, tint: Color = Neon.WeatherIcon) {
+    val c = tint.copy(alpha = 0.9f)
     Canvas(modifier) {
         val code = w?.code ?: 3
         val day = w?.isDay ?: true
