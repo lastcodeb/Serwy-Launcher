@@ -1,5 +1,7 @@
 package dev.mibox.neon.dream
 
+import android.os.Handler
+import android.os.Looper
 import android.service.dreams.DreamService
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
@@ -24,9 +26,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
- * The Neon screensaver. Only runs while the system dreams (not a background service): slow cover
- * art from Watch Next and the apps' channels, a big clock and the weather. With ambient on, the
- * WiZ backlight takes each cover's color and is put back when the dream ends.
+ * The Neon screensaver. Only runs while the system dreams (not a background service): real
+ * sea-and-sky footage matched to the time of day and weather, a big clock and the weather. With
+ * ambient on, the WiZ backlight takes the scene's color and is put back when the dream ends.
  */
 class NeonDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     private val registry = LifecycleRegistry(this)
@@ -101,5 +103,13 @@ class NeonDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         io.cancel()
         super.onDetachedFromWindow()
+        // The dream shares the launcher's process (Android 11 needs that), and the launcher is in
+        // the foreground, so ART is in no hurry to collect the player's ~40 MB of leftovers. Once
+        // the window is gone, collect them and hand the pages back.
+        Handler(Looper.getMainLooper()).postDelayed({ Runtime.getRuntime().gc() }, GC_DELAY_MS)
+    }
+
+    private companion object {
+        const val GC_DELAY_MS = 1500L
     }
 }
