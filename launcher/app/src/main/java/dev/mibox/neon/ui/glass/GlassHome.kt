@@ -142,7 +142,7 @@ fun GlassHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
     }
     LaunchedEffect(Unit) {
         vm.homePressed.collect {
-            focus.value = null
+            // Focus is kept: if the first card already had it, no focus event would refill it
             rows.scrollAllToStart()
             rows.focus(keysNow().first())
         }

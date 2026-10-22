@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # The wrapper points at a local Gradle zip on the dev machine; CI downloads it instead
+      - name: Use the official Gradle distribution
+        run: sed -i 's#^distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-bin.zip#' gradle/wrapper/gradle-wrapper.properties
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests
+        run: bash ./gradlew testDebugUnitTest --console=plain
+
+      # No Pixabay key in CI: the APK builds and runs, the screensaver just has no footage
+      - name: Build release APK
+        run: bash ./gradlew assembleRelease "-Ppixabay.apiKey=" --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: serwy-launcher-apk
+          path: launcher/app/build/outputs/apk/release/app-release.apk
+          retention-days: 14

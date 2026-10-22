@@ -549,6 +549,11 @@ private fun KunyeCell(label: String, value: String, compact: Boolean, link: Bool
         Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(label, style = st.serif(13f), color = st.textMuted, maxLines = 1)
+                // The boxed KÜNYE has room for four rows only: the hint shares the label's line
+                if (hint != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(hint, style = st.play(11f, italic = true), color = st.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     value,
@@ -561,7 +566,6 @@ private fun KunyeCell(label: String, value: String, compact: Boolean, link: Bool
                     textDecoration = deco,
                 )
             }
-            if (hint != null) Text(hint, style = st.play(12f, italic = true), color = st.textMuted, maxLines = 1)
         }
     }
 }

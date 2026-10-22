@@ -1,0 +1,46 @@
+name: Publish package
+
+# Publishes the APK attached to a release to GitHub Packages (Maven), so the package and the
+# release download are the very same file.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to publish (e.g. v1.0.0)
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          server-id: github
+
+      - name: Download the release APK
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.apk' --dir dist
+
+      - name: Deploy to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          apk=$(ls dist/*.apk | head -n 1)
+          mvn --batch-mode deploy:deploy-file \
+            -Dfile="$apk" \
+            -DgroupId=dev.mibox \
+            -DartifactId=serwy-launcher \
+            -Dversion="${TAG#v}" \
+            -Dpackaging=apk \
+            -DrepositoryId=github \
+            -Durl="https://maven.pkg.github.com/${GITHUB_REPOSITORY}"

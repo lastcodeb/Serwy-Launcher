@@ -11,6 +11,9 @@ val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
 }
 
+// -Ppixabay.apiKey=… overrides local.properties; an empty value builds a key-free APK for publishing
+val pixabayKey: String = (findProperty("pixabay.apiKey") as String?) ?: localProps.getProperty("pixabay.apiKey", "")
+
 android {
     namespace = "dev.mibox.neon"
     compileSdk = 35
@@ -19,9 +22,9 @@ android {
         applicationId = "dev.mibox.neon"
         minSdk = 30 // Mi TV Box S 2nd Gen runs Android 11
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-        buildConfigField("String", "PIXABAY_KEY", "\"${localProps.getProperty("pixabay.apiKey", "")}\"")
+        versionCode = 2
+        versionName = "1.0.0"
+        buildConfigField("String", "PIXABAY_KEY", "\"$pixabayKey\"")
     }
 
     buildTypes {

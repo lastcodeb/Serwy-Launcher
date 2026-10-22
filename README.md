@@ -1,42 +1,65 @@
 # Serwy Launcher
 
+[![CI](https://github.com/lastcodeb/Serwy-Launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/lastcodeb/Serwy-Launcher/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/lastcodeb/Serwy-Launcher)](https://github.com/lastcodeb/Serwy-Launcher/releases/latest)
+
 A fast, custom Android TV home screen (app name **Neon**) plus a debloat toolkit, built for the
-**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Everything is set up from a
-Windows PC over Wi-Fi ADB. Nothing needs root.
+**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Four themes, live football
+match day with WiZ light effects, a monthly "Wrapped" of your viewing, network health, and a
+screensaver of real sea-and-sky footage picked by your local time and weather. Everything is set
+up from a Windows PC over Wi-Fi ADB. Nothing needs root.
 
-The launcher's UI text is in Turkish; code, scripts and docs are in English.
+The UI follows the box's language: **Turkish** on a Turkish box, **English** everywhere else.
+Code, scripts and docs are in English.
 
-![Home screen: continue watching](docs/screenshots/home-continue-watching.png)
+![Glass theme: continue watching](docs/screenshots/glass-continue-watching.jpg)
 
 | | |
 |---|---|
-| ![Favorites](docs/screenshots/home-favorites.png) | ![For you](docs/screenshots/home-for-you.png) |
-| ![All apps](docs/screenshots/home-all-apps.png) | ![Long-press menu](docs/screenshots/app-menu.png) |
+| ![Glass theme](docs/screenshots/glass-home.jpg) | ![Glass theme: for you](docs/screenshots/glass-for-you.jpg) |
+| ![Gazete theme](docs/screenshots/theme-gazete.jpg) | ![Teletext theme](docs/screenshots/theme-teletext.jpg) |
+| ![Neon theme](docs/screenshots/home-continue-watching.png) | ![Match day](docs/screenshots/match-panel.jpg) |
 
 ---
 
 ## Contents
 
 1. [Features](#features)
-2. [Tested hardware](#tested-hardware)
-3. [Repository layout](#repository-layout)
-4. [Requirements](#requirements)
-5. [Quick start](#quick-start)
-6. [Full setup, step by step](#full-setup-step-by-step)
-7. [Using the launcher](#using-the-launcher)
-8. [Permissions](#permissions)
-9. [How it works](#how-it-works)
-10. [Performance](#performance)
-11. [Troubleshooting](#troubleshooting)
-12. [Known limitations](#known-limitations)
-13. [Undo everything](#undo-everything)
-14. [Credits and licenses](#credits-and-licenses)
+2. [Install a release](#install-a-release)
+3. [Tested hardware](#tested-hardware)
+4. [Repository layout](#repository-layout)
+5. [Requirements](#requirements)
+6. [Quick start (build from source)](#quick-start-build-from-source)
+7. [Full setup, step by step](#full-setup-step-by-step)
+8. [Using the launcher](#using-the-launcher)
+9. [Permissions](#permissions)
+10. [How it works](#how-it-works)
+11. [Languages](#languages)
+12. [Performance](#performance)
+13. [Development](#development)
+14. [Troubleshooting](#troubleshooting)
+15. [Known limitations](#known-limitations)
+16. [Undo everything](#undo-everything)
+17. [Credits and licenses](#credits-and-licenses)
 
 ---
 
 ## Features
 
-### Home screen
+### Themes
+Pick one in the control center → *Tema* (Theme). Every theme reskins the whole launcher,
+including menus, panels and dialogs.
+
+| Theme | Look |
+|---|---|
+| **Neon** | The original: gradient titles, glowing glass chips, the hero tinted by the focused app's colors. |
+| **Cam** (Glass) | Apple TV-like. The focused show's artwork fills the top of the screen and melts into a frosted blur of itself; app banners float as a lifted tile; a glass shelf holds the rows; cards lift with a spring and catch a light sheen; buttons turn white on focus. |
+| **Gazete** (Newspaper) | A front page: masthead, lead story, sports column, editor's picks and an index of every app, set in Playfair Display, Source Serif and Barlow Condensed. Day (paper) and night (ink) editions, switching automatically at sunset. |
+| **Teletext** | A 1990s teletext service: page numbers, colored fast-text keys, mosaic graphics, VT323 type, inverse-video focus. Type a page number on remotes that have digits. |
+
+![Theme picker](docs/screenshots/theme-picker.jpg)
+
+### Home screen (Neon)
 - **Hero** that follows focus: the focused app or episode in a huge gradient title over a faint
   version of the app's real icon, with the whole background glow tinted by the app's colors
   (extracted with Palette from its own banner). Idle for 30 s, it cycles through your favorites.
@@ -66,17 +89,65 @@ Local UDP control (port 38899), no cloud, discovered automatically.
   gauge during the speed test, a weather-colored light, and a sleep timer that dims then turns
   the light off.
 
+### Match day (Galatasaray)
+- A permanent **match chip** in the top bar with both teams' crests and the abbreviations Turkish
+  broadcasters use (GS – FB, BJK, TS, İBFK…): the countdown before kickoff, the live score and
+  minute, then the result.
+- The **match panel**: a scoreboard with large crests, *Maçı aç* (opens the match in the app you
+  watch it in, e.g. beIN Connect), settings and a preview of every state.
+- **WiZ light effects** in the club's red and yellow: at kickoff, on every Galatasaray goal and
+  after a win. A **stream delay** (0–90 s) holds the effects back so the light never spoils a
+  goal before the picture shows it.
+- Fixtures and live scores come from ESPN's public API (Süper Lig, Champions League, Europa
+  League, Conference League); crests are cached on the box.
+
+### Neon Wrapped
+A monthly story of your viewing, built from the system's usage history: hours watched, most
+watched apps, busiest day and hour, longest session, streaks, a comparison with the previous
+month and a "persona" (night owl, weekend marathoner, explorer…). A badge appears when last
+month's story is ready.
+
+### Network health
+Connection type, Wi-Fi signal, link speed and latency, a history of the last 30 speed tests
+(manual and automatic) with the 4K threshold drawn in, and a verdict: *good for 4K*, *enough
+for HD* or *weak*. Opening a streaming app on a slow connection shows a warning.
+
 ### Screensaver
 A real Android `DreamService`: real sea-and-sky footage (Pixabay) chosen by the **actual time of
 day and weather** in your city: moonlit sea, sunrise, open sea, sunset, clouds, rain, storm,
 fog, snow. Sunrise and sunset times come from Open-Meteo. Hardware-decoded, streamed through a
 100 MB cache, 4K whenever the hardware H.264 decoder can handle it. Clock, date and weather on
-top; the WiZ light follows the scene and is restored afterwards.
+top; the WiZ light follows the scene and is restored afterwards. When the screensaver ends, the
+launcher gives the memory it used back (see [Performance](#performance)).
 
 ### Debloat
 `debloat.sh` disables (never uninstalls) Xiaomi analytics, ad and recommendation packages and
 other unused system apps, lowers animation scales, and swaps the Google TV launcher out.
 `restore.sh` undoes all of it.
+
+---
+
+## Install a release
+
+Every [release](https://github.com/lastcodeb/Serwy-Launcher/releases) has a ready-to-install
+APK. With ADB connected to the box (see [step 1](#1-enable-adb-on-the-box) and
+[step 3](#3-connect)):
+
+```powershell
+adb install -r Serwy-Launcher-1.0.0.apk
+adb shell appops set dev.mibox.neon GET_USAGE_STATS allow
+adb shell pm grant dev.mibox.neon android.permission.READ_TV_LISTINGS
+adb shell cmd package set-home-activity dev.mibox.neon/.MainActivity
+```
+
+The same APK is published as a Maven package in this repository's
+[GitHub Packages](https://github.com/lastcodeb/Serwy-Launcher/packages)
+(`dev.mibox:serwy-launcher`, type `apk`).
+
+Release APKs are built **without a Pixabay key**, so the screensaver shows the clock and weather
+on a dark background instead of video. To get the footage, build from source with your own free
+key (see [step 6](#6-configure-the-build)). Release APKs are signed with a development key;
+switching between a release APK and your own build may need an uninstall first.
 
 ---
 
@@ -107,17 +178,24 @@ package list is specific to this Xiaomi model.
 ├── docs/screenshots/
 ├── tv-launcher-design/
 │   └── hero-glow.svg          # the 1920×1080 design the home screen follows
+├── .github/workflows/         # CI (unit tests + build) and package publishing
 └── launcher/                  # the Android app (Gradle, Kotlin, Jetpack Compose for TV)
     ├── install.ps1            # build + install + permissions + set as HOME
     ├── rollback.ps1           # switch HOME back (or to Google TV)
-    ├── POPPINS_OFL.txt
-    └── app/src/main/java/dev/mibox/neon/
-        ├── MainActivity.kt
-        ├── LauncherViewModel.kt
-        ├── SleepReceiver.kt
-        ├── data/              # apps, prefs, weather, speed test, WiZ, Watch Next
-        ├── dream/             # screensaver (DreamService + video)
-        └── ui/                # Compose screens and components
+    ├── *_OFL.txt              # font licenses
+    └── app/src/
+        ├── main/java/dev/mibox/neon/
+        │   ├── MainActivity.kt
+        │   ├── LauncherViewModel.kt
+        │   ├── data/          # apps, prefs, weather, speed test, WiZ, Watch Next, match day,
+        │   │                  # usage history (Wrapped), headlines
+        │   ├── dream/         # screensaver (DreamService + video)
+        │   ├── i18n/          # t(), the English catalog, locale-change receiver
+        │   └── ui/            # shared shell, panels and dialogs, the Neon home
+        │       ├── glass/     # the Glass (Apple TV-like) home
+        │       ├── gazete/    # the newspaper home
+        │       └── teletext/  # the teletext home
+        └── test/              # JVM unit tests
 ```
 
 ---
@@ -150,7 +228,7 @@ C:\mibox\tools\gradle-8.11.1-bin.zip      # optional, used by the wrapper
 
 ---
 
-## Quick start
+## Quick start (build from source)
 
 ```powershell
 # 1. Connect to the box (accept the "Allow USB debugging?" prompt on the TV)
@@ -334,8 +412,13 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 | Control center → *Neon Wrapped* | OK | Monthly story: ◀ ▶ pages, ▲ ▼ month, Back closes |
 | Light chip | OK / long-press | Light panel / toggle the first quick preset (Party) |
 | RAM chip | OK | Close background apps, shows how much was freed |
-| Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city) |
+| Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city, theme) |
+| Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext |
 | Home | – | Back to the top row, first card |
+
+The table describes Neon and Glass. Gazete and Teletext lay the same functions out as a
+newspaper page and teletext pages (*Tema* / *Dizin* links, page numbers, colored keys); their
+footers say which key does what.
 
 **Unhide an app**: Control center → *Gizli uygulamalar*, or long-press the gear → *Gizli
 uygulamalar* → select the app.
@@ -382,22 +465,66 @@ it the provider silently returns only the caller's own rows.
 - **Screensaver**: `NeonDream` hosts Compose (it provides its own `LifecycleOwner` and
   `SavedStateRegistryOwner`); `SkyVideos` maps time of day + weather to a mood, searches
   Pixabay (results cached 24 h, tag-filtered, landscape only), ExoPlayer plays them on a
-  `SurfaceView` through a 100 MB `SimpleCache`.
+  `SurfaceView` through a 100 MB `SimpleCache`. The dream runs in the launcher's process (a
+  separate process crashes `DreamActivity` on Android 11), so a GC shortly after it ends returns
+  the ~45 MB of heap it used.
+- **Themes**: one `HomeStyle` per theme (colors, fonts, shapes, focus style) is provided at the
+  root; the shared panels and dialogs read it, and each theme draws its own home.
+- **Glass without blur APIs**: Android 11 has no `RenderEffect`, so the frosted backdrop is the
+  artwork shrunk to 64×36, box-blurred three times and stretched with a saturation boost. Fades
+  and the poster's soft edges are drawn in a single canvas with a shader mask instead of
+  offscreen layers, which halved the theme's GPU memory.
+- **Match day**: ESPN's public scoreboard API for fixtures and live scores; an `AlarmManager`
+  chain polls only around kickoff, also while another app is in front, to drive the light
+  effects.
+
+---
+
+## Languages
+
+The UI is written in Turkish and translated by lookup: `t("Türkçe metin")` returns the Turkish
+text on a Turkish box and the entry from the English catalog (`i18n/EnStrings.kt`) on any other
+language. Templates use `{0}`, `{1}` placeholders so word order can change
+(`"RAM %{0}"` → `"RAM {0}%"`). Dates, day and month names follow the box's locale. When the
+system language changes, the launcher restarts itself so everything is rebuilt in the new one.
+
+A unit test fails the build if any `t("…")` in the sources has no English entry, or if a
+translation's placeholders differ from the original's. To add a language, add a catalog like
+`EnStrings.kt` and pick it in `I18n` by `Locale.getDefault().language`.
 
 ---
 
 ## Performance
 
-Measured on the box above.
+Measured on the box above, launcher in the foreground, Watch Next and recommendations loaded.
 
 | | |
 |---|---|
 | Cold start (system "Displayed") | 0.43–0.45 s |
-| APK size | ~3.5 MB |
-| RAM on the home screen (PSS) | ~96–99 MB |
-| RAM while another app is in front (PSS) | ~81 MB (was 143 MB before trimming) |
+| APK size | ~4.5 MB |
+| RAM on the home screen (PSS), Neon | ~100–155 MB |
+| RAM on the home screen (PSS), Glass | ~145 MB (GPU 55 MB) |
+| RAM while another app is in front (PSS) | ~81 MB |
+| RAM after a screensaver run | no growth (was +47 MB before the fix) |
 | Projectivy Launcher, same box, for comparison | ~87 MB on the home screen |
 | Screensaver video decoding | hardware (`OMX.amlogic.avc.decoder`), 3840×2160, ~9 % CPU |
+
+---
+
+## Development
+
+```powershell
+cd C:\mibox\launcher
+$env:JAVA_HOME = "C:\mibox\tools\jdk17"
+.\gradlew.bat testDebugUnitTest      # JVM unit tests (translations, team codes)
+.\gradlew.bat assembleRelease        # R8-minified APK in app\build\outputs\apk\release
+.\gradlew.bat assembleRelease "-Ppixabay.apiKey="   # a key-free APK, for publishing
+```
+
+GitHub Actions runs the unit tests and a build on every push and pull request
+(`.github/workflows/ci.yml`). Publishing a release attaches its APK to GitHub Packages
+(`.github/workflows/package.yml`). Versions follow [SemVer](https://semver.org/); the tag is
+`v<versionName>` from `app/build.gradle.kts`.
 
 ---
 
@@ -455,8 +582,13 @@ bash restore.sh <BOX_IP>:5555
 ## Credits and licenses
 
 - **Design**: `tv-launcher-design/hero-glow.svg`, made with Claude Design.
-- **Font**: [Poppins](https://fonts.google.com/specimen/Poppins), SIL Open Font License 1.1
-  (`launcher/POPPINS_OFL.txt`).
+- **Fonts**, all SIL Open Font License 1.1 (license files in `launcher/`):
+  [Poppins](https://fonts.google.com/specimen/Poppins),
+  [Playfair Display](https://fonts.google.com/specimen/Playfair+Display),
+  [Source Serif 4](https://fonts.google.com/specimen/Source+Serif+4),
+  [Barlow Condensed](https://fonts.google.com/specimen/Barlow+Condensed),
+  [VT323](https://fonts.google.com/specimen/VT323). The Glass theme uses the system sans (Roboto).
+- **Fixtures, live scores and team crests**: ESPN's public API; crests belong to their clubs.
 - **Weather, sunrise/sunset, geocoding**: [Open-Meteo](https://open-meteo.com/), data under
   CC BY 4.0.
 - **Screensaver footage**: streamed from [Pixabay](https://pixabay.com/) under the Pixabay
