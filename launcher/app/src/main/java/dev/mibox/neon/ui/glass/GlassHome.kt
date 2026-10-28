@@ -121,6 +121,7 @@ fun GlassHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
     val forYou by vm.forYou.collectAsStateWithLifecycle()
     val watchLoaded by vm.watchLoaded.collectAsStateWithLifecycle()
     val moving by vm.moving.collectAsStateWithLifecycle()
+    val movingFavorite by vm.movingFavorite.collectAsStateWithLifecycle()
 
     val focus = remember { mutableStateOf<Focus?>(null) }
     val rows = remember { RowsController() }
@@ -187,7 +188,7 @@ fun GlassHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
                 onOpenMatch = actions.onOpenMatch,
             )
         }
-        Shelf(vm, apps, favorites, watch, forYou, moving, rows, focus, actions)
+        Shelf(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, actions)
     }
 }
 
@@ -392,6 +393,7 @@ private fun Shelf(
     watch: List<WatchItem>,
     forYou: List<WatchItem>,
     moving: String?,
+    movingFavorite: String?,
     rows: RowsController,
     focus: MutableState<Focus?>,
     actions: HomeActions,
@@ -412,7 +414,7 @@ private fun Shelf(
             .glass(RoundedCornerShape(30.dp))
             .clipToBounds()
             .onPreviewKeyEvent { e ->
-                if (moving != null || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (moving != null || movingFavorite != null || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     Key.DirectionUp -> active > 0 && rows.focus(keys[active - 1])
                     Key.DirectionDown -> active >= keys.lastIndex || rows.focus(keys[active + 1])
@@ -437,7 +439,7 @@ private fun Shelf(
                 }
                 ShelfRow(title, keys.indexOf(key), keys.size) {
                     when (key) {
-                        ROW_FAVORITES -> FavoritesRow(favorites, vm, rows.listState(key), entry, focus, actions)
+                        ROW_FAVORITES -> FavoritesRow(favorites, vm, movingFavorite, rows.listState(key), entry, focus, actions)
                         ROW_WATCH -> WatchRow(watch, vm, rows.listState(key), entry, focus, actions)
                         ROW_FOR_YOU -> WatchRow(forYou, vm, rows.listState(key), entry, focus, actions)
                         ROW_APPS -> AppsRow(apps, vm, moving, rows.listState(key), entry, focus, actions)
@@ -510,30 +512,33 @@ private fun AppsRow(
 private fun FavoritesRow(
     cards: List<FavoriteCard>,
     vm: LauncherViewModel,
+    moving: String?,
     state: LazyListState,
     entry: Modifier,
     focus: MutableState<Focus?>,
     actions: HomeActions,
 ) {
     LazyRow(state = state, modifier = Modifier.shelfRow(entry), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        items(cards, key = { it.key }) { card ->
+        itemsIndexed(cards, key = { _, c -> c.key }) { index, card ->
             when (card) {
                 is FavoriteCard.App -> AppTile(
                     card.app, vm,
-                    moving = false,
-                    index = 0,
+                    moving = moving == card.key,
+                    index = index,
                     modifier = Modifier.animateItem(),
                     onFocused = { focus.value = Focus.App(card.app) },
                     onClick = { vm.launchPinned(card) },
-                    onLongClick = { actions.onAppMenu(card.app) },
+                    onLongClick = { actions.onFavoriteMenu(card) },
                 )
                 is FavoriteCard.Content -> ContentTile(
                     card.item, vm,
                     modifier = Modifier.animateItem(),
                     pinned = card,
+                    moving = moving == card.key,
+                    index = index,
                     onFocused = { focus.value = Focus.Watch(card.item, card.app) },
                     onClick = { vm.launchPinned(card) },
-                    onLongClick = { actions.onContentMenu(card.item) },
+                    onLongClick = { actions.onFavoriteMenu(card) },
                 )
             }
         }
@@ -611,22 +616,35 @@ private fun AppTile(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun ContentTile(
     item: WatchItem,
     vm: LauncherViewModel,
     modifier: Modifier = Modifier,
     pinned: FavoriteCard.Content? = null,
+    moving: Boolean = false,
+    index: Int = 0,
     onFocused: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
+    val bring = remember { BringIntoViewRequester() }
+    if (moving) LaunchedEffect(index) { bring.bringIntoView() }
     val thumb by produceState<AppArt?>(null, item.id, item.imageUri) {
         value = if (pinned != null) vm.favoriteArt(pinned) else vm.watchArt(item)
     }
     val app = remember(item.pkg) { vm.appFor(item.pkg) }
     val appArt by produceState<AppArt?>(null, item.pkg) { value = app?.let { vm.art(it) } }
-    GlassCard(onClick = onClick, onLongClick = onLongClick, modifier = modifier, onFocused = onFocused) {
+    GlassCard(
+        onClick = onClick,
+        onLongClick = onLongClick,
+        modifier = modifier
+            .bringIntoViewRequester(bring)
+            .then(if (moving) Modifier.onPreviewKeyEvent { moveKeys(it, vm) } else Modifier),
+        forceBig = moving,
+        onFocused = onFocused,
+    ) {
         val th = thumb
         if (th != null) {
             Image(th.image, item.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -643,6 +661,11 @@ private fun ContentTile(
         }
         item.progress?.let {
             GlassProgress(it, Modifier.align(Alignment.BottomCenter).padding(horizontal = 10.dp, vertical = 8.dp).fillMaxWidth(), height = 3.dp)
+        }
+        if (moving) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
+                Text("◀   ▶", style = TextStyle(fontFamily = Sans, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White))
+            }
         }
     }
 }

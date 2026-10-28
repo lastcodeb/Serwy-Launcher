@@ -16,6 +16,7 @@ import androidx.compose.ui.input.key.type
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.data.FavoriteCard
 import dev.mibox.neon.data.WatchItem
 
 /**
@@ -42,6 +43,8 @@ class HomeActions(
     val onAppMenu: (AppEntry) -> Unit,
     /** Long-press on a Watch Next / "Senin için" / pinned content item: pin or unpin. */
     val onContentMenu: (WatchItem) -> Unit,
+    /** Long-press on a Favoriler card (app or content): its menu, where "Taşı" moves it along the Favoriler row. */
+    val onFavoriteMenu: (FavoriteCard) -> Unit,
 )
 
 /** One-shot messages from LauncherScreen to the active home (see [HomeActions]); collect them in a LaunchedEffect. */

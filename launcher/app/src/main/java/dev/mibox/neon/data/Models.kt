@@ -91,7 +91,7 @@ sealed interface SpeedState {
 }
 
 /** The selectable home-screen design. NEON is the original and the default. */
-enum class HomeTheme { NEON, GAZETE, TELETEXT, GLASS }
+enum class HomeTheme { NEON, GAZETE, TELETEXT, GLASS, LUMEN }
 
 /** Which edition of the Gazete theme: follows sunrise/sunset (AUTO) or is fixed. */
 enum class GazeteEdition { AUTO, DAY, NIGHT }

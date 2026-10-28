@@ -27,6 +27,8 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -66,6 +68,25 @@ val BarlowCond = FontFamily(
 
 /** One weight only (Normal). The pixel grid of the teletext theme. */
 val Vt323 = FontFamily(Font(R.font.vt323_regular, FontWeight.Normal))
+
+// Lumen: variable fonts (subset to Latin + Turkish), one file each, weights picked by axis
+@OptIn(ExperimentalTextApi::class)
+private fun inter(weight: Int) = Font(
+    R.font.lumen_inter, FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
+)
+
+@OptIn(ExperimentalTextApi::class)
+private fun bricolage(weight: Int) = Font(
+    R.font.lumen_bricolage, FontWeight(weight),
+    variationSettings = FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", 96f)),
+)
+
+/** Inter: 400, 500, 600, 700. Body and labels of the Lumen theme. */
+val LumenSans = FontFamily(inter(400), inter(500), inter(600), inter(700))
+
+/** Bricolage Grotesque at display optical size: 600, 700, 800. Lumen's titles and clock. */
+val LumenDisplay = FontFamily(bricolage(600), bricolage(700), bricolage(800))
 
 // --- Palettes ----------------------------------------------------------------------------------
 
@@ -207,8 +228,8 @@ class HomeStyle(
 ) {
     val panelShape: Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(panelRadius)
 
-    /** Neon and Glass: rounded pills, scale on focus, symbols in the system font. */
-    val modern: Boolean get() = theme == HomeTheme.NEON || theme == HomeTheme.GLASS
+    /** Neon, Glass and Lumen: rounded pills, scale on focus, symbols in the system font. */
+    val modern: Boolean get() = theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN
 
     /** [neonRadius] on Neon, square corners elsewhere. */
     fun shapeOf(neonRadius: Dp): Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(neonRadius)
@@ -283,7 +304,7 @@ class HomeStyle(
     /** "✓ " in front of the chosen entry, "" otherwise. [spaces] only matters on Neon. */
     fun mark(on: Boolean, spaces: Int = 1): String = when {
         !on -> ""
-        theme == HomeTheme.NEON || theme == HomeTheme.GLASS -> "✓" + " ".repeat(spaces)
+        theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN -> "✓" + " ".repeat(spaces)
         theme == HomeTheme.GAZETE -> "• "
         else -> "* "
     }
@@ -382,11 +403,12 @@ fun rememberHomeStyle(theme: HomeTheme, gazeteNight: Boolean): HomeStyle {
             HomeTheme.GAZETE -> gazeteStyle(gazeteNight)
             HomeTheme.TELETEXT -> teletextStyle()
             HomeTheme.GLASS -> glassStyle()
+            HomeTheme.LUMEN -> lumenStyle()
         }
     }
 }
 
-// --- The four styles --------------------------------------------------------------------------
+// --- The five styles --------------------------------------------------------------------------
 
 /** Today's launcher, token for token. */
 internal fun neonStyle(t: Typography): HomeStyle = HomeStyle(
@@ -632,6 +654,79 @@ internal fun glassStyle(): HomeStyle {
         labelTracking = TextUnit.Unspecified,
         displayTracking = (-1.2).sp,
         panelRadius = 26.dp,
+        borderWidth = 1.dp,
+        chipBorderWidth = 0.75.dp,
+        chipShape = Pill,
+        focusStyle = FocusStyle.INVERSE,
+        uppercaseLabels = false,
+        symbols = true,
+        doubleRule = false,
+    )
+}
+
+/** Lumen: calm warm-dark ground, one amber accent (the room's light), white focus with an amber ring. */
+object LumenPalette {
+    val Ground = Color(0xFF0D0F14)
+    val Surface = Color(0xFF14171E)
+    val Raised = Color(0xFF1A1D25)
+    val Text = Color(0xFFF3F0E8)
+    val Dim = Color(0xFFB4B8C2)
+    val Muted = Color(0xFF8A8F9B)
+    val Faint = Color(0xFF6E7380)
+    val Amber = Color(0xFFFFB547)
+    val Ok = Color(0xFF9BE38A)
+    val Hairline = Color.White.copy(alpha = 0.10f)
+}
+
+internal fun lumenStyle(): HomeStyle {
+    val l = LumenPalette
+    return HomeStyle(
+        theme = HomeTheme.LUMEN,
+        night = false,
+        background = l.Ground,
+        surface = l.Surface,
+        surfaceHi = l.Raised,
+        panelBorder = l.Hairline,
+        text = l.Text,
+        textSoft = l.Text,
+        textBody = Color(0xFFD9D6CE),
+        textDim = l.Dim,
+        textMuted = l.Muted,
+        accent = l.Amber,
+        accent2 = l.Amber,
+        onAccent = l.Ground,
+        eyebrow = l.Dim,
+        focus = l.Text,
+        onFocus = l.Ground,
+        divider = Color.White.copy(alpha = 0.08f),
+        ok = l.Ok,
+        warn = l.Amber,
+        danger = Color(0xFFFF6B6B),
+        chipFill = l.Raised,
+        chipFillFocused = l.Text,
+        chipStroke = Color.White.copy(alpha = 0.14f),
+        track = Color.White.copy(alpha = 0.14f),
+        icon = l.Text,
+        weatherIcon = l.Dim,
+        placeholder = Color(0xFF171A21),
+        titleColor = l.Text,
+        titleBrush = null,
+        accentBrush = null,
+        ctaBrush = null,
+        barBrush = SolidColor(l.Amber),
+        display = TextStyle(fontFamily = LumenDisplay, fontSize = 60.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-2).sp),
+        headline = TextStyle(fontFamily = LumenDisplay, fontSize = 24.sp, fontWeight = FontWeight.Bold),
+        body = TextStyle(fontFamily = LumenSans, fontSize = 14.sp, fontWeight = FontWeight.Normal),
+        label = TextStyle(fontFamily = LumenSans, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
+        item = TextStyle(fontFamily = LumenSans, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+        displayFont = LumenDisplay,
+        headlineFont = LumenDisplay,
+        bodyFont = LumenSans,
+        labelFont = LumenSans,
+        fontScale = 1f,
+        labelTracking = TextUnit.Unspecified,
+        displayTracking = (-2).sp,
+        panelRadius = 24.dp,
         borderWidth = 1.dp,
         chipBorderWidth = 0.75.dp,
         chipShape = Pill,

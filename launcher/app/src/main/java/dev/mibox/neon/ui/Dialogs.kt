@@ -109,7 +109,7 @@ fun AppMenu(
     val wizIp by vm.wizIp.collectAsStateWithLifecycle()
     val pinned by vm.pinnedShowcase.collectAsStateWithLifecycle()
     val profile = profiles[app.pkg]
-    // Only the Neon and Glass rows can reorder apps; the other homes have no "moving" mode
+    // Only the Neon, Glass and Lumen rows can reorder apps; the other homes have no "moving" mode
     val canMove = st.modern
 
     NeonDialog(onDismiss) {
@@ -157,7 +157,7 @@ fun AppMenu(
  * pins the item or takes it off the Favoriler row again.
  */
 @Composable
-fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, onToggled: () -> Unit) {
+fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, onToggled: () -> Unit, onMove: (() -> Unit)? = null) {
     val st = LocalHomeStyle.current
     val keys by vm.pinnedContentKeys.collectAsStateWithLifecycle()
     val pinned = vm.pinKeyOf(item) in keys
@@ -166,10 +166,13 @@ fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, o
     NeonDialog(onDismiss) {
         Text(item.title, style = st.headline, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(4.dp))
+        // A pinned card opened from Favoriler can be moved along the row
+        val canMove = onMove != null && pinned && st.modern
+        if (canMove) MenuItem(t("↔   Taşı"), { onMove?.invoke() }, Modifier.focusRequester(first))
         MenuItem(
             if (pinned) t("⭐   Favorilerden çıkar") else t("⭐   Favorilere ekle"),
             { vm.togglePinned(item); onToggled() },
-            Modifier.focusRequester(first),
+            if (canMove) Modifier else Modifier.focusRequester(first),
         )
         MenuItem(t("✕   Kapat"), onDismiss)
     }

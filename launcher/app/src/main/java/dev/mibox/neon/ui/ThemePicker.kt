@@ -1,6 +1,7 @@
 package dev.mibox.neon.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,14 +42,15 @@ import dev.mibox.neon.data.HomeTheme
 import kotlinx.coroutines.delay
 import dev.mibox.neon.i18n.t
 
-private val PreviewW = 160.dp
-private val PreviewH = 90.dp
+private val PreviewW = 144.dp
+private val PreviewH = 81.dp
 
 private fun nameOf(t: HomeTheme) = when (t) {
     HomeTheme.NEON -> "Neon"
     HomeTheme.GAZETE -> t("Gazete")
     HomeTheme.TELETEXT -> "Teletext"
     HomeTheme.GLASS -> t("Cam")
+    HomeTheme.LUMEN -> "Lumen"
 }
 
 private fun blurbOf(t: HomeTheme) = when (t) {
@@ -56,6 +58,7 @@ private fun blurbOf(t: HomeTheme) = when (t) {
     HomeTheme.GAZETE -> t("Manşet ve sütunlarla gazete sayfası")
     HomeTheme.TELETEXT -> t("90'lar teletekst sayfası")
     HomeTheme.GLASS -> t("Buzlu cam ve sinema gibi büyük görseller")
+    HomeTheme.LUMEN -> t("Sakin ve sinema gibi; önce kaldığın yer")
 }
 
 /**
@@ -79,7 +82,7 @@ fun ThemePicker(vm: LauncherViewModel, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .ignoreOpeningPress()
-                .width(820.dp)
+                .width(900.dp)
                 .panel(st)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -155,6 +158,7 @@ private fun ThemeOption(
                 HomeTheme.GAZETE -> GazetePreview(gazeteNight)
                 HomeTheme.TELETEXT -> TeletextPreview()
                 HomeTheme.GLASS -> GlassPreview()
+                HomeTheme.LUMEN -> LumenPreview()
             }
             Text(
                 st.mark(selected) + nameOf(theme),
@@ -326,6 +330,36 @@ private fun GlassPreview() {
         ) {
             listOf(Color.White, Color(0xFFE50914), Color(0xFF1DB954), Color(0xFF0A84FF), Color(0xFFFFD60A)).forEachIndexed { i, c ->
                 Box(Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(3.dp)).background(if (i == 0) c else c.copy(alpha = 0.8f)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LumenPreview() {
+    val l = LumenPalette
+    Box(Modifier.size(PreviewW, PreviewH).clip(RoundedCornerShape(6.dp)).background(l.Ground)) {
+        // Title left, artwork right, rows below; one amber ring
+        Text(
+            "Cobra Kai",
+            modifier = Modifier.padding(start = 7.dp, top = 16.dp),
+            style = TextStyle(fontFamily = LumenDisplay, fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = l.Text),
+        )
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 9.dp, end = 7.dp)
+                .size(width = 62.dp, height = 35.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Brush.linearGradient(listOf(Color(0xFF7A2A12), Color(0xFFE0893A)))),
+        )
+        Column(Modifier.align(Alignment.BottomStart).padding(start = 7.dp, bottom = 7.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                repeat(6) { Box(Modifier.size(width = 14.dp, height = 8.dp).clip(RoundedCornerShape(2.dp)).background(l.Raised)) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(Modifier.size(width = 27.dp, height = 15.dp).border(1.dp, l.Amber, RoundedCornerShape(3.dp)).padding(2.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF5B3A2A)))
+                repeat(3) { Box(Modifier.size(width = 27.dp, height = 15.dp).clip(RoundedCornerShape(3.dp)).background(l.Raised)) }
             }
         }
     }

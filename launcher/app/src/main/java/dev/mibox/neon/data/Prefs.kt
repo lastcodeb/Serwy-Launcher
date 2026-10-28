@@ -74,6 +74,11 @@ class Prefs(private val ctx: Context) {
         .map { p -> p[FAV_ORDER]?.split(',')?.filter(String::isNotEmpty).orEmpty() }
         .distinctUntilChanged()
 
+    /** Saves a reordered Favoriler row ([FavoriteCard.key] tokens, left to right). */
+    suspend fun setFavoriteOrder(order: List<String>) {
+        ctx.store.edit { it[FAV_ORDER] = order.joinToString(",") }
+    }
+
     /** Pinned Watch Next / "Senin için" items, in the order they were added. */
     val pinnedContent: Flow<List<PinnedContent>> = ctx.store.data
         .map { p -> decodePins(p[PINNED_CONTENT]) }

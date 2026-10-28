@@ -111,6 +111,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private val _moving = MutableStateFlow<String?>(null)
     val moving: StateFlow<String?> = _moving.asStateFlow()
 
+    // Moving a Favoriler card works like moving an app, on the row's own order
+    private val draftFavOrder = MutableStateFlow<List<String>?>(null)
+    private val _movingFavorite = MutableStateFlow<String?>(null)
+    /** [FavoriteCard.key] of the Favoriler card being moved, if any. */
+    val movingFavorite: StateFlow<String?> = _movingFavorite.asStateFlow()
+
     private val _ram = MutableStateFlow(stats.ram())
     val ram: StateFlow<Ram> = _ram.asStateFlow()
 
@@ -215,7 +221,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
      * update that briefly removes the package doesn't lose them).
      */
     val favoriteCards: StateFlow<List<FavoriteCard>> =
-        combine(installed.filterNotNull(), prefs.showcase, prefs.pinnedContent, prefs.favoriteOrder) { list, apps, content, order ->
+        combine(installed.filterNotNull(), prefs.showcase, prefs.pinnedContent, prefs.favoriteOrder, draftFavOrder) { list, apps, content, saved, draft ->
+            val order = draft ?: saved
             val byPkg = list.associateBy { it.pkg }
             val cards = apps.mapNotNull { byPkg[it]?.let { a -> FavoriteCard.App(a) } } +
                 content.mapNotNull { c -> byPkg[c.item.pkg]?.let { a -> FavoriteCard.Content(a, c.item, c.key) } }
@@ -790,12 +797,12 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     fun openSystemSettings() = repo.openSystemSettings()
 
     fun onHomePressed() {
-        if (_moving.value != null) finishMove()
+        if (_moving.value != null || _movingFavorite.value != null) finishMove()
         _homePressed.tryEmit(Unit)
     }
 
     fun onBack() {
-        if (_moving.value != null) finishMove()
+        if (_moving.value != null || _movingFavorite.value != null) finishMove()
     }
 
     private var resumed = false
@@ -1104,7 +1111,22 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _moving.value = pkg
     }
 
+    /** Starts moving the Favoriler card with [key] ([FavoriteCard.key]); [move] and [finishMove] then act on it. */
+    fun startFavoriteMove(key: String) {
+        draftFavOrder.value = favoriteCards.value.map { it.key }
+        _movingFavorite.value = key
+    }
+
     fun move(delta: Int) {
+        _movingFavorite.value?.let { key ->
+            val list = draftFavOrder.value?.toMutableList() ?: return
+            val i = list.indexOf(key)
+            val j = i + delta
+            if (i < 0 || j !in list.indices) return
+            Collections.swap(list, i, j)
+            draftFavOrder.value = list
+            return
+        }
         val pkg = _moving.value ?: return
         val list = draftOrder.value?.toMutableList() ?: return
         val i = list.indexOf(pkg)
@@ -1115,6 +1137,16 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun finishMove() {
+        if (_movingFavorite.value != null) {
+            val order = draftFavOrder.value ?: return
+            _movingFavorite.value = null
+            viewModelScope.launch {
+                prefs.setFavoriteOrder(order)
+                prefs.favoriteOrder.first { it == order }
+                draftFavOrder.value = null
+            }
+            return
+        }
         val order = draftOrder.value ?: return
         _moving.value = null
         viewModelScope.launch {

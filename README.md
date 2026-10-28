@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/lastcodeb/Serwy-Launcher)](https://github.com/lastcodeb/Serwy-Launcher/releases/latest)
 
 A fast, custom Android TV home screen (app name **Neon**) plus a debloat toolkit, built for the
-**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Four themes, live football
+**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Five themes, live football
 match day with WiZ light effects, a monthly "Wrapped" of your viewing, network health, and a
 screensaver of real sea-and-sky footage picked by your local time and weather. Everything is set
 up from a Windows PC over Wi-Fi ADB. Nothing needs root.
@@ -56,6 +56,7 @@ including menus, panels and dialogs.
 | **Cam** (Glass) | Apple TV-like. The focused show's artwork fills the top of the screen and melts into a frosted blur of itself; app banners float as a lifted tile; a glass shelf holds the rows; cards lift with a spring and catch a light sheen; buttons turn white on focus. |
 | **Gazete** (Newspaper) | A front page: masthead, lead story, sports column, editor's picks and an index of every app, set in Playfair Display, Source Serif and Barlow Condensed. Day (paper) and night (ink) editions, switching automatically at sunset. |
 | **Teletext** | A 1990s teletext service: page numbers, colored fast-text keys, mosaic graphics, VT323 type, inverse-video focus. Type a page number on remotes that have digits. |
+| **Lumen** | Calm and content-first: the focused card's story and artwork in the showcase, the rows below in the Glass order with the active one bright, a quiet top bar (match, weather, light, network, clock). One amber accent, the color of the room's light; white buttons with an amber focus ring. Bricolage Grotesque and Inter. |
 
 ![Theme picker](docs/screenshots/theme-picker.jpg)
 
@@ -402,7 +403,7 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 |---|---|---|
 | Any card | OK | Open the app / resume the episode |
 | App card | Long-press OK | Menu: move, hide, add to favorites, light profile, app info |
-| Move mode | ◀ ▶ / OK / Back | Move the card / drop it / drop it |
+| Move mode | ◀ ▶ / OK / Back | Move the card / drop it / drop it (works in *Tüm uygulamalar* and in *Favoriler*) |
 | Rows | ▲ ▼ | Previous / next row; from the top row, the top bar |
 | Watch Next / Senin için card | Long-press OK | Menu: *Favorilere ekle* / *Favorilerden çıkar* (pins the episode to Favoriler) |
 | Pinned content card (Favoriler) | OK / long-press OK | Open the episode / menu: *Favorilerden çıkar* |
@@ -413,7 +414,7 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 | Light chip | OK / long-press | Light panel / toggle the first quick preset (Party) |
 | RAM chip | OK | Close background apps, shows how much was freed |
 | Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city, theme) |
-| Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext |
+| Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext, Lumen |
 | Home | – | Back to the top row, first card |
 
 The table describes Neon and Glass. Gazete and Teletext lay the same functions out as a
@@ -587,7 +588,10 @@ bash restore.sh <BOX_IP>:5555
   [Playfair Display](https://fonts.google.com/specimen/Playfair+Display),
   [Source Serif 4](https://fonts.google.com/specimen/Source+Serif+4),
   [Barlow Condensed](https://fonts.google.com/specimen/Barlow+Condensed),
-  [VT323](https://fonts.google.com/specimen/VT323). The Glass theme uses the system sans (Roboto).
+  [VT323](https://fonts.google.com/specimen/VT323),
+  [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque),
+  [Inter](https://fonts.google.com/specimen/Inter) (both subset to Latin and Turkish). The Glass
+  theme uses the system sans (Roboto).
 - **Fixtures, live scores and team crests**: ESPN's public API; crests belong to their clubs.
 - **Weather, sunrise/sunset, geocoding**: [Open-Meteo](https://open-meteo.com/), data under
   CC BY 4.0.

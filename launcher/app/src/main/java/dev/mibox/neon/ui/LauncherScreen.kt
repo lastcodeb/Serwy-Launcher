@@ -19,11 +19,13 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.tv.material3.LocalContentColor
 import dev.mibox.neon.LauncherViewModel
 import dev.mibox.neon.data.AppEntry
+import dev.mibox.neon.data.FavoriteCard
 import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.PinResult
 import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.ui.gazete.GazeteHome
 import dev.mibox.neon.ui.glass.GlassHome
+import dev.mibox.neon.ui.lumen.LumenHome
 import dev.mibox.neon.ui.teletext.TeletextHome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -42,6 +44,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
     val style = rememberHomeStyle(theme, night && theme == HomeTheme.GAZETE)
 
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
+    // Set when the open app/content menu came from a Favoriler card: "Taşı" then moves that card
+    var favoriteKey by remember { mutableStateOf<String?>(null) }
     var contentMenuFor by remember { mutableStateOf<WatchItem?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var showLight by remember { mutableStateOf(false) }
@@ -62,8 +66,21 @@ fun LauncherScreen(vm: LauncherViewModel) {
             onOpenMatch = { showMatch = true },
             onOpenWrapped = { showWrapped = true },
             onOpenThemePicker = { showTheme = true },
-            onAppMenu = { menuFor = it },
-            onContentMenu = { contentMenuFor = it },
+            onAppMenu = {
+                favoriteKey = null
+                menuFor = it
+            },
+            onContentMenu = {
+                favoriteKey = null
+                contentMenuFor = it
+            },
+            onFavoriteMenu = { card ->
+                favoriteKey = card.key
+                when (card) {
+                    is FavoriteCard.App -> menuFor = card.app
+                    is FavoriteCard.Content -> contentMenuFor = card.item
+                }
+            },
         )
     }
 
@@ -142,6 +159,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 HomeTheme.GAZETE -> GazeteHome(vm, actions, signals)
                 HomeTheme.TELETEXT -> TeletextHome(vm, actions, signals)
                 HomeTheme.GLASS -> GlassHome(vm, actions, signals)
+                HomeTheme.LUMEN -> LumenHome(vm, actions, signals)
             }
 
             contentMenuFor?.let { item ->
@@ -153,6 +171,12 @@ fun LauncherScreen(vm: LauncherViewModel) {
                         contentMenuFor = null
                         signals.tryEmit(HomeSignal.PinToggled)
                     },
+                    onMove = favoriteKey?.let { key ->
+                        {
+                            contentMenuFor = null
+                            vm.startFavoriteMove(key)
+                        }
+                    },
                 )
             }
 
@@ -163,7 +187,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
                     onDismiss = { menuFor = null },
                     onMove = {
                         menuFor = null
-                        vm.startMove(app.pkg)
+                        val key = favoriteKey
+                        if (key != null) vm.startFavoriteMove(key) else vm.startMove(app.pkg)
                     },
                     onHide = {
                         menuFor = null

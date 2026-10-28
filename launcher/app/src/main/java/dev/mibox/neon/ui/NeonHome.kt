@@ -64,6 +64,7 @@ fun NeonHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
     val forYou by vm.forYou.collectAsStateWithLifecycle()
     val watchLoaded by vm.watchLoaded.collectAsStateWithLifecycle()
     val moving by vm.moving.collectAsStateWithLifecycle()
+    val movingFavorite by vm.movingFavorite.collectAsStateWithLifecycle()
 
     // Plain state holder: written by cards, read only by the hero host and the footer
     val focus = remember { mutableStateOf<Focus?>(null) }
@@ -142,8 +143,10 @@ fun NeonHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
             vm, favorites, apps, watch, forYou, moving, rows, focus,
             onMenu = actions.onAppMenu,
             onContentMenu = actions.onContentMenu,
+            movingFavorite = movingFavorite,
+            onFavoriteMenu = actions.onFavoriteMenu,
         )
-        FooterLabel(focus, moving != null)
+        FooterLabel(focus, moving != null || movingFavorite != null)
     }
 }
 

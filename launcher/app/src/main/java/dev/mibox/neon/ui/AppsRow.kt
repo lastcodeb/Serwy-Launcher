@@ -164,6 +164,8 @@ fun RowsArea(
     focus: MutableState<Focus?>,
     onMenu: (AppEntry) -> Unit,
     onContentMenu: (WatchItem) -> Unit,
+    movingFavorite: String? = null,
+    onFavoriteMenu: (FavoriteCard) -> Unit = {},
 ) {
     val keys = rowKeys(favorites, watch, forYou)
     val active = keys.indexOf(rows.activeKey).coerceAtLeast(0)
@@ -180,7 +182,7 @@ fun RowsArea(
             .clipToBounds()
             .onPreviewKeyEvent { e ->
                 // A card being moved owns the D-pad
-                if (moving != null || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                if (moving != null || movingFavorite != null || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 when (e.key) {
                     // From the top row, Up falls through to the top bar
                     Key.DirectionUp -> active > 0 && rows.focus(keys[active - 1])
@@ -202,10 +204,9 @@ fun RowsArea(
                 when (key) {
                     ROW_FAVORITES -> RowSection(t("Favoriler"), favorites.size, Small) {
                         FavoritesRow(
-                            favorites, vm, rows.listState(key), rowModifier,
+                            favorites, vm, movingFavorite, rows.listState(key), rowModifier,
                             onFocused = { focus.value = it },
-                            onMenu = onMenu,
-                            onContentMenu = onContentMenu,
+                            onMenu = onFavoriteMenu,
                         )
                     }
                     ROW_WATCH -> RowSection(t("İzlemeye devam et"), watch.size) {
@@ -297,11 +298,11 @@ private fun AppsRow(
 private fun FavoritesRow(
     cards: List<FavoriteCard>,
     vm: LauncherViewModel,
+    moving: String?,
     state: LazyListState,
     modifier: Modifier,
     onFocused: (Focus) -> Unit,
-    onMenu: (AppEntry) -> Unit,
-    onContentMenu: (WatchItem) -> Unit,
+    onMenu: (FavoriteCard) -> Unit,
 ) {
     LazyRow(
         state = state,
@@ -309,28 +310,30 @@ private fun FavoritesRow(
         contentPadding = PaddingValues(horizontal = 48.dp, vertical = GLOW_PAD.dp),
         horizontalArrangement = Arrangement.spacedBy(Small.gap),
     ) {
-        items(cards, key = { it.key }) { card ->
+        itemsIndexed(cards, key = { _, c -> c.key }) { index, card ->
             when (card) {
                 is FavoriteCard.App -> AppCard(
                     app = card.app,
-                    index = 0,
-                    moving = false,
+                    index = index,
+                    moving = moving == card.key,
                     vm = vm,
                     spec = Small,
                     modifier = Modifier.animateItem(),
                     onFocused = { onFocused(Focus.App(card.app)) },
                     onClick = { vm.launchPinned(card) },
-                    onLongClick = { onMenu(card.app) },
+                    onLongClick = { onMenu(card) },
                 )
                 is FavoriteCard.Content -> WatchCard(
                     item = card.item,
                     vm = vm,
                     onFocused = { onFocused(Focus.Watch(card.item, card.app)) },
                     onClick = { vm.launchPinned(card) },
-                    onLongClick = { onContentMenu(card.item) },
+                    onLongClick = { onMenu(card) },
                     modifier = Modifier.animateItem(),
                     spec = Small,
                     pinned = card,
+                    moving = moving == card.key,
+                    index = index,
                 )
             }
         }
@@ -493,6 +496,7 @@ private fun AppCard(
  * The app's own thumbnail; without one, the app's banner with the title over it. A [pinned]
  * card (Favoriler) loads its saved poster and falls back to the app banner on its own.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun WatchCard(
     item: WatchItem,
@@ -503,7 +507,13 @@ private fun WatchCard(
     modifier: Modifier = Modifier,
     spec: CardSpec = Regular,
     pinned: FavoriteCard.Content? = null,
+    moving: Boolean = false,
+    index: Int = 0,
 ) {
+    val bringIntoView = remember { BringIntoViewRequester() }
+    if (moving) {
+        LaunchedEffect(index) { bringIntoView.bringIntoView() }
+    }
     val thumb by produceState<AppArt?>(null, item.id, item.imageUri) {
         value = if (pinned != null) vm.favoriteArt(pinned) else vm.watchArt(item)
     }
@@ -515,8 +525,11 @@ private fun WatchCard(
         onLongClick = onLongClick,
         color = Neon.Bg3,
         glow = t?.vibrant ?: appArt?.vibrant ?: Neon.Pink,
-        modifier = modifier,
+        modifier = modifier
+            .bringIntoViewRequester(bringIntoView)
+            .then(if (moving) Modifier.onPreviewKeyEvent { moveKeys(it, vm) } else Modifier),
         spec = spec,
+        forceBig = moving,
         onFocused = onFocused,
     ) {
         if (t != null) {
@@ -555,6 +568,21 @@ private fun WatchCard(
                 Box(Modifier.fillMaxHeight().fillMaxWidth(p.coerceAtLeast(0.03f)).background(Neon.Pink))
             }
         }
+        if (moving) MoveOverlay()
+    }
+}
+
+/** Darkens a card being moved and shows which way it goes. */
+@Composable
+private fun BoxScope.MoveOverlay() {
+    Box(
+        Modifier
+            .matchParentSize()
+            .background(Color.Black.copy(alpha = 0.4f))
+            .border(2.dp, Neon.Pink, CardShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("◀   ▶", style = TextStyle(fontFamily = Poppins, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.White))
     }
 }
 
