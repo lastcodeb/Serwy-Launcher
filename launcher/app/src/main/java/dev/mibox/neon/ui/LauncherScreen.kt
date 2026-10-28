@@ -26,6 +26,7 @@ import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.ui.gazete.GazeteHome
 import dev.mibox.neon.ui.glass.GlassHome
 import dev.mibox.neon.ui.lumen.LumenHome
+import dev.mibox.neon.ui.lumen.LumenRoom
 import dev.mibox.neon.ui.teletext.TeletextHome
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -212,7 +213,36 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 )
             }
             if (showLight) LightPanel(vm, onDismiss = { showLight = false })
-            if (showControl) {
+            if (showControl && theme == HomeTheme.LUMEN) {
+                LumenRoom(
+                    vm,
+                    onDismiss = { showControl = false },
+                    onOpenLight = {
+                        showControl = false
+                        showLight = true
+                    },
+                    onOpenMenu = {
+                        showControl = false
+                        showMenu = true
+                    },
+                    onOpenNet = {
+                        showControl = false
+                        showNet = true
+                    },
+                    onOpenWrapped = {
+                        showControl = false
+                        showWrapped = true
+                    },
+                    onOpenMatch = {
+                        showControl = false
+                        showMatch = true
+                    },
+                    onOpenTheme = {
+                        showControl = false
+                        showTheme = true
+                    },
+                )
+            } else if (showControl) {
                 ControlCenter(
                     vm,
                     onDismiss = { showControl = false },

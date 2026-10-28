@@ -132,15 +132,14 @@ fun NeonSurface(
         scale = ClickableSurfaceDefaults.scale(focusedScale = if (st.modern) focusedScale else 1f),
         border = ClickableSurfaceDefaults.border(
             border = Border(idleStroke, shape = s),
-            // Lumen: the white button also gets an amber ring a little outside it
-            focusedBorder = if (lumen) Border(BorderStroke(2.dp, st.accent), inset = (-4).dp, shape = s) else Border(focusStroke, shape = s),
+            focusedBorder = Border(focusStroke, shape = s),
         ),
         glow = ClickableSurfaceDefaults.glow(
             glow = if (neon) idleGlow else Glow.None,
             focusedGlow = when {
                 neon -> Glow(glowColor.copy(alpha = 0.45f), 12.dp)
-                // Glass: the lifted white button casts a soft shadow instead of a glow
-                glass -> Glow(Color.Black.copy(alpha = 0.4f), 12.dp)
+                // Glass and Lumen: the lifted white button casts a soft shadow instead of a glow
+                glass || lumen -> Glow(Color.Black.copy(alpha = 0.4f), 12.dp)
                 else -> Glow.None
             },
         ),

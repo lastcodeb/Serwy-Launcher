@@ -174,6 +174,7 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     width: Dp = GlassCardW,
     height: Dp = GlassCardH,
+    shape: Shape = GlassCardShape,
     forceBig: Boolean = false,
     onFocused: () -> Unit,
     content: @Composable BoxScope.(big: Boolean) -> Unit,
@@ -207,7 +208,7 @@ fun GlassCard(
                 scaleY = scale
             }
             .onFocusChanged { if (it.isFocused) onFocused() },
-        shape = ClickableSurfaceDefaults.shape(GlassCardShape),
+        shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = GlassPalette.Frost,
             focusedContainerColor = GlassPalette.Frost,

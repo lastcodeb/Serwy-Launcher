@@ -56,7 +56,7 @@ including menus, panels and dialogs.
 | **Cam** (Glass) | Apple TV-like. The focused show's artwork fills the top of the screen and melts into a frosted blur of itself; app banners float as a lifted tile; a glass shelf holds the rows; cards lift with a spring and catch a light sheen; buttons turn white on focus. |
 | **Gazete** (Newspaper) | A front page: masthead, lead story, sports column, editor's picks and an index of every app, set in Playfair Display, Source Serif and Barlow Condensed. Day (paper) and night (ink) editions, switching automatically at sunset. |
 | **Teletext** | A 1990s teletext service: page numbers, colored fast-text keys, mosaic graphics, VT323 type, inverse-video focus. Type a page number on remotes that have digits. |
-| **Lumen** | Calm and content-first: the focused card's story and artwork in the showcase, the rows below in the Glass order with the active one bright, a quiet top bar (match, weather, light, network, clock). One amber accent, the color of the room's light; white buttons with an amber focus ring. Bricolage Grotesque and Inter. |
+| **Lumen** | Calm and content-first: the focused card's story and artwork in the showcase, the rows below in the Glass order with the active one bright, a quiet top bar (match, weather, light, network, clock). One amber accent, the color of the room's light; cards lift on focus like Glass. A room panel (light, scenes, sleep, system) and a grid of every app. Set in Manrope. |
 
 ![Theme picker](docs/screenshots/theme-picker.jpg)
 
@@ -589,8 +589,7 @@ bash restore.sh <BOX_IP>:5555
   [Source Serif 4](https://fonts.google.com/specimen/Source+Serif+4),
   [Barlow Condensed](https://fonts.google.com/specimen/Barlow+Condensed),
   [VT323](https://fonts.google.com/specimen/VT323),
-  [Bricolage Grotesque](https://fonts.google.com/specimen/Bricolage+Grotesque),
-  [Inter](https://fonts.google.com/specimen/Inter) (both subset to Latin and Turkish). The Glass
+  [Manrope](https://fonts.google.com/specimen/Manrope) (subset to Latin and Turkish). The Glass
   theme uses the system sans (Roboto).
 - **Fixtures, live scores and team crests**: ESPN's public API; crests belong to their clubs.
 - **Weather, sunrise/sunset, geocoding**: [Open-Meteo](https://open-meteo.com/), data under

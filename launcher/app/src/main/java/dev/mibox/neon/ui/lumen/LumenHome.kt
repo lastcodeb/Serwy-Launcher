@@ -56,6 +56,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
@@ -108,6 +109,7 @@ import dev.mibox.neon.ui.ROW_WATCH
 import dev.mibox.neon.ui.RowsController
 import dev.mibox.neon.ui.TR
 import dev.mibox.neon.ui.TeamLogo
+import dev.mibox.neon.ui.glass.GlassCard
 import dev.mibox.neon.ui.moveKeys
 import dev.mibox.neon.ui.rememberNow
 import dev.mibox.neon.ui.rowKeys
@@ -194,6 +196,8 @@ fun LumenHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
     }
 
     AccentFollows(vm, focus.value?.app)
+    var showApps by remember { mutableStateOf(false) }
+    if (showApps) LumenApps(vm, actions.onAppMenu) { showApps = false }
 
     Box(Modifier.fillMaxSize().background(L.Ground)) {
         Showcase(vm, focus)
@@ -206,7 +210,7 @@ fun LumenHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
         ) {
             LumenTopBar(vm, actions)
         }
-        Rows(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, actions)
+        Rows(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, actions, onOpenApps = { showApps = true })
     }
 }
 
@@ -455,6 +459,7 @@ private fun Rows(
     rows: RowsController,
     focus: MutableState<Focus?>,
     actions: HomeActions,
+    onOpenApps: () -> Unit,
 ) {
     val keys = rowKeys(favorites, watch, forYou)
     val active = keys.indexOf(rows.activeKey).coerceAtLeast(0)
@@ -507,47 +512,12 @@ private fun Rows(
                         ),
                     )
                     when (key) {
-                        ROW_FAVORITES -> FavoritesRow(favorites, vm, movingFavorite, rows.listState(key), entry, focus, actions)
+                        ROW_FAVORITES -> FavoritesRow(favorites, vm, movingFavorite, rows.listState(key), entry, focus, actions, onOpenApps)
                         ROW_WATCH -> WatchRow(watch, vm, rows.listState(key), entry, focus, actions)
                         ROW_FOR_YOU -> WatchRow(forYou, vm, rows.listState(key), entry, focus, actions)
-                        ROW_APPS -> AppsRow(apps, vm, moving, rows.listState(key), entry, focus, actions)
+                        ROW_APPS -> AppsRow(apps, vm, moving, rows.listState(key), entry, focus, actions, onOpenApps)
                     }
                 }
-            }
-        }
-        RowIndex(keys, active)
-    }
-}
-
-/** Where you are among the rows: their names on the right, the active one marked. */
-@Composable
-private fun BoxScope.RowIndex(keys: List<String>, active: Int) {
-    Column(
-        Modifier.align(Alignment.TopEnd).padding(end = Side, top = 4.dp),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        keys.forEachIndexed { i, key ->
-            val name = when (key) {
-                ROW_FAVORITES -> t("Favoriler")
-                ROW_WATCH -> t("İzlemeye devam et")
-                ROW_FOR_YOU -> t("Senin için")
-                else -> t("Tüm uygulamalar")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (i == active) {
-                    Box(Modifier.size(4.dp).clip(CircleShape).background(L.Amber))
-                    Spacer(Modifier.width(5.dp))
-                }
-                Text(
-                    name,
-                    style = TextStyle(
-                        fontFamily = LumenSans,
-                        fontSize = 9.5.sp,
-                        fontWeight = if (i == active) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (i == active) L.Text else L.Faint,
-                    ),
-                )
             }
         }
     }
@@ -559,7 +529,12 @@ private fun Modifier.row(entry: Modifier, h: Dp) = fillMaxWidth()
     .then(entry)
     .focusRestorer()
 
+/** On a row's last card: Right stays put instead of jumping up to the top bar. */
+@OptIn(ExperimentalComposeUiApi::class)
+private val RowEnd = Modifier.focusProperties { right = FocusRequester.Cancel }
+
 private val RowPadding = PaddingValues(horizontal = Side, vertical = 8.dp)
+
 
 @Composable
 private fun FavoritesRow(
@@ -570,8 +545,9 @@ private fun FavoritesRow(
     entry: Modifier,
     focus: MutableState<Focus?>,
     actions: HomeActions,
+    onOpenApps: () -> Unit,
 ) {
-    LazyRow(state = state, modifier = Modifier.row(entry, SmallH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+    LazyRow(state = state, modifier = Modifier.row(entry, SmallH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         itemsIndexed(cards, key = { _, c -> c.key }) { index, card ->
             when (card) {
                 is FavoriteCard.App -> AppTile(
@@ -590,6 +566,19 @@ private fun FavoritesRow(
                 )
             }
         }
+        item(key = "all") { AllAppsTile(onOpenApps) }
+    }
+}
+
+/** Last tile of Favoriler and Tüm uygulamalar: opens the grid of every app. */
+@Composable
+private fun AllAppsTile(onClick: () -> Unit) {
+    LumenCard(SmallW, SmallH, SmallShape, onClick, onClick, RowEnd, moving = false, onFocused = {}) {
+        Row(Modifier.align(Alignment.Center), verticalAlignment = Alignment.CenterVertically) {
+            AllAppsGlyph()
+            Spacer(Modifier.width(7.dp))
+            Text(t("Tümü"), style = TextStyle(fontFamily = LumenSans, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = L.Text))
+        }
     }
 }
 
@@ -602,10 +591,11 @@ private fun WatchRow(
     focus: MutableState<Focus?>,
     actions: HomeActions,
 ) {
-    LazyRow(state = state, modifier = Modifier.row(entry, BigH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-        items(items, key = { it.id }) { item ->
+    LazyRow(state = state, modifier = Modifier.row(entry, BigH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        itemsIndexed(items, key = { _, it -> it.id }) { i, item ->
             ContentTile(
                 item, vm,
+                modifier = if (i == items.lastIndex) RowEnd else Modifier,
                 onFocused = { focus.value = Focus.Watch(item, vm.appFor(item.pkg)) },
                 onClick = { vm.launchWatch(item) },
                 onLongClick = { actions.onContentMenu(item) },
@@ -623,8 +613,9 @@ private fun AppsRow(
     entry: Modifier,
     focus: MutableState<Focus?>,
     actions: HomeActions,
+    onOpenApps: () -> Unit,
 ) {
-    LazyRow(state = state, modifier = Modifier.row(entry, SmallH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+    LazyRow(state = state, modifier = Modifier.row(entry, SmallH), contentPadding = RowPadding, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         itemsIndexed(apps, key = { _, a -> a.pkg }) { index, app ->
             AppTile(
                 app, vm, moving = moving == app.pkg, index = index,
@@ -634,13 +625,11 @@ private fun AppsRow(
                 onLongClick = { actions.onAppMenu(app) },
             )
         }
+        item(key = "all") { AllAppsTile(onOpenApps) }
     }
 }
 
-/**
- * A Lumen card: on focus it grows a little and gets an amber ring just outside it (the white
- * buttons' ring, in card form). No glow: the ground stays calm.
- */
+/** A Lumen card: the Glass card's lift, shadow and sheen on focus, in Lumen's sizes. */
 @Composable
 private fun LumenCard(
     width: Dp,
@@ -653,34 +642,15 @@ private fun LumenCard(
     onFocused: () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val big = focused || moving
-    val scale by animateFloatAsState(if (big) 1.06f else 1f, spring(dampingRatio = 0.75f, stiffness = 420f), label = "lumenCard")
-    Surface(
+    GlassCard(
         onClick = onClick,
         onLongClick = onLongClick,
-        modifier = modifier
-            .zIndex(if (big) 1f else 0f)
-            .size(width, height)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-            .onFocusChanged { if (it.isFocused) onFocused() },
-        shape = ClickableSurfaceDefaults.shape(shape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = L.Surface,
-            focusedContainerColor = L.Surface,
-            pressedContainerColor = L.Surface,
-        ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        border = ClickableSurfaceDefaults.border(
-            border = Border.None,
-            focusedBorder = Border(BorderStroke(2.dp, L.Amber), inset = (-3).dp, shape = shape),
-        ),
-        glow = ClickableSurfaceDefaults.glow(),
-        interactionSource = interaction,
+        modifier = modifier,
+        width = width,
+        height = height,
+        shape = shape,
+        forceBig = moving,
+        onFocused = onFocused,
     ) {
         content()
         if (moving) {

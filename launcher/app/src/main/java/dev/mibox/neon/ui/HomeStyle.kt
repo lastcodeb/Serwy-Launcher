@@ -69,24 +69,18 @@ val BarlowCond = FontFamily(
 /** One weight only (Normal). The pixel grid of the teletext theme. */
 val Vt323 = FontFamily(Font(R.font.vt323_regular, FontWeight.Normal))
 
-// Lumen: variable fonts (subset to Latin + Turkish), one file each, weights picked by axis
+// Lumen: Manrope, one variable font (subset to Latin + Turkish), weights picked by axis
 @OptIn(ExperimentalTextApi::class)
-private fun inter(weight: Int) = Font(
-    R.font.lumen_inter, FontWeight(weight),
+private fun manrope(weight: Int) = Font(
+    R.font.lumen_manrope, FontWeight(weight),
     variationSettings = FontVariation.Settings(FontVariation.weight(weight)),
 )
 
-@OptIn(ExperimentalTextApi::class)
-private fun bricolage(weight: Int) = Font(
-    R.font.lumen_bricolage, FontWeight(weight),
-    variationSettings = FontVariation.Settings(FontVariation.weight(weight), FontVariation.Setting("opsz", 96f)),
-)
+/** Manrope 400–800: body, labels and titles of the Lumen theme. */
+val LumenSans = FontFamily(manrope(400), manrope(500), manrope(600), manrope(700), manrope(800))
 
-/** Inter: 400, 500, 600, 700. Body and labels of the Lumen theme. */
-val LumenSans = FontFamily(inter(400), inter(500), inter(600), inter(700))
-
-/** Bricolage Grotesque at display optical size: 600, 700, 800. Lumen's titles and clock. */
-val LumenDisplay = FontFamily(bricolage(600), bricolage(700), bricolage(800))
+/** Lumen's titles and clock: the same family, used at 700–800. */
+val LumenDisplay = LumenSans
 
 // --- Palettes ----------------------------------------------------------------------------------
 
@@ -664,7 +658,7 @@ internal fun glassStyle(): HomeStyle {
     )
 }
 
-/** Lumen: calm warm-dark ground, one amber accent (the room's light), white focus with an amber ring. */
+/** Lumen: calm warm-dark ground, one amber accent (the room's light); focus lifts like Glass. */
 object LumenPalette {
     val Ground = Color(0xFF0D0F14)
     val Surface = Color(0xFF14171E)
@@ -714,7 +708,7 @@ internal fun lumenStyle(): HomeStyle {
         accentBrush = null,
         ctaBrush = null,
         barBrush = SolidColor(l.Amber),
-        display = TextStyle(fontFamily = LumenDisplay, fontSize = 60.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-2).sp),
+        display = TextStyle(fontFamily = LumenDisplay, fontSize = 60.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
         headline = TextStyle(fontFamily = LumenDisplay, fontSize = 24.sp, fontWeight = FontWeight.Bold),
         body = TextStyle(fontFamily = LumenSans, fontSize = 14.sp, fontWeight = FontWeight.Normal),
         label = TextStyle(fontFamily = LumenSans, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
@@ -725,7 +719,7 @@ internal fun lumenStyle(): HomeStyle {
         labelFont = LumenSans,
         fontScale = 1f,
         labelTracking = TextUnit.Unspecified,
-        displayTracking = (-2).sp,
+        displayTracking = (-1.5).sp,
         panelRadius = 24.dp,
         borderWidth = 1.dp,
         chipBorderWidth = 0.75.dp,
