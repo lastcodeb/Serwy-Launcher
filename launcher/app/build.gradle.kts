@@ -22,8 +22,8 @@ android {
         applicationId = "dev.mibox.neon"
         minSdk = 30 // Mi TV Box S 2nd Gen runs Android 11
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.1.0"
         buildConfigField("String", "PIXABAY_KEY", "\"$pixabayKey\"")
     }
 
@@ -72,6 +72,8 @@ dependencies {
     implementation("androidx.media3:media3-database:1.4.1")
     // Installs the baseline profiles shipped with Compose for faster cold start
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // "Tüm uygulamaları kapat": force-stop through the box's own adbd (see LocalAdb)
+    implementation("dev.mobile:dadb:1.2.10")
 
     testImplementation("junit:junit:4.13.2")
 }

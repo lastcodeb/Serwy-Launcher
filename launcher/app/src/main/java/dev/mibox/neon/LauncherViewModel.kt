@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.mibox.neon.data.LocalAdb
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
 import dev.mibox.neon.data.AppRepository
@@ -801,6 +802,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _homePressed.tryEmit(Unit)
     }
 
+    private val _allAppsRequest = MutableStateFlow(false)
+    /** The remote's Apps key asked for the grid of every app; LauncherScreen opens it and clears this. */
+    val allAppsRequest: StateFlow<Boolean> = _allAppsRequest.asStateFlow()
+
+    fun requestAllApps(on: Boolean = true) {
+        _allAppsRequest.value = on
+    }
+
     fun onBack() {
         if (_moving.value != null || _movingFavorite.value != null) finishMove()
     }
@@ -1026,10 +1035,24 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _ram.value = stats.ram()
     }
 
+    private val localAdb = LocalAdb(app)
+    private val _boostMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    /** What the clean-up did, for a toast: how many apps were closed, or that the TV must approve first. */
+    val boostMessage: SharedFlow<String> = _boostMessage
+
     fun boost() {
         if (boostJob?.isActive == true) return
         boostJob = viewModelScope.launch {
             val before = stats.ram().avail
+            // Really close every app that is running (force-stop through the box's own adb);
+            // without adb approval only the cached processes below can go
+            val launchable = installed.value.orEmpty().mapTo(HashSet()) { it.pkg }
+            when (val r = localAdb.forceStopRunning(launchable, keep = setOf(getApplication<Application>().packageName))) {
+                is LocalAdb.Result.Done -> _boostMessage.tryEmit(
+                    if (r.stopped.isEmpty()) t("Açık uygulama yoktu") else t("{0} uygulama kapatıldı", r.stopped.size),
+                )
+                LocalAdb.Result.NotAllowed -> _boostMessage.tryEmit(t("Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene"))
+            }
             withContext(Dispatchers.IO) {
                 stats.killBackground()
                 // Some apps restart their background process straight away: a second pass gets them
@@ -1190,11 +1213,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { WatchNext.query(getApplication()) }
                 .onSuccess {
                     _watchNext.value = it
-                    Log.i(TAG, "Watch Next: ${it.size} items")
+                    Log.i(TAG, "Watch Next: ${it.size} items ${it.groupingBy { w -> w.pkg }.eachCount()}")
                 }
                 .onFailure { Log.w(TAG, "Watch Next unavailable", it) }
             runCatching { WatchNext.previews(getApplication(), exclude = _watchNext.value.mapTo(HashSet()) { it.title }) }
-                .onSuccess { _forYou.value = it }
+                .onSuccess {
+                    _forYou.value = it
+                    Log.i(TAG, "Senin için: ${it.size} items ${it.groupingBy { w -> w.pkg }.eachCount()}")
+                }
                 .onFailure { Log.w(TAG, "Preview programs unavailable", it) }
             _watchLoaded.value = true
         }

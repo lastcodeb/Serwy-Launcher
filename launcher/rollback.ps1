@@ -1,9 +1,9 @@
 # Switches HOME away from Neon: back to the launcher that was active before install.ps1 if it is
 # still installed, otherwise to the stock Google TV launcher (re-enabled for the purpose).
 # Neon stays installed; add -Uninstall to remove it as well.
-#   powershell -ExecutionPolicy Bypass -File .\rollback.ps1 [-Device 192.168.110.31:5555] [-Uninstall]
+#   powershell -ExecutionPolicy Bypass -File .\rollback.ps1 [-Device 192.168.110.32:5555] [-Uninstall]
 param(
-    [string]$Device = "192.168.110.31:5555",
+    [string]$Device = "192.168.110.32:5555",
     [switch]$Uninstall
 )
 $ErrorActionPreference = "Stop"

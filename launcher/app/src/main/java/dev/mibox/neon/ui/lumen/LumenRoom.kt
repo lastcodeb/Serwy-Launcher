@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -60,6 +62,7 @@ private val L = LumenPalette
 @Composable
 fun LumenRoom(
     vm: LauncherViewModel,
+    accent: Color = L.Amber,
     onDismiss: () -> Unit,
     onOpenLight: () -> Unit,
     onOpenMenu: () -> Unit,
@@ -80,6 +83,7 @@ fun LumenRoom(
     val first = remember { FocusRequester() }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+      CompositionLocalProvider(LocalRoomAccent provides accent) {
         Box(Modifier.fillMaxSize().ignoreOpeningPress(), contentAlignment = Alignment.CenterEnd) {
             Column(
                 Modifier
@@ -122,7 +126,7 @@ fun LumenRoom(
                                 .clip(RoundedCornerShape(50))
                                 .background(L.Raised),
                         ) {
-                            Box(Modifier.fillMaxHeight().fillMaxWidth((if (p?.on == true) dim else 0) / 100f).background(L.Amber))
+                            Box(Modifier.fillMaxHeight().fillMaxWidth((if (p?.on == true) dim else 0) / 100f).background(accent))
                             Text(
                                 if (p?.on == true) t("%{0}", dim) else t("kapalı"),
                                 modifier = Modifier.align(Alignment.CenterStart).padding(start = 12.dp),
@@ -192,6 +196,7 @@ fun LumenRoom(
                 Chip(t("Gizli uygulamalar · Şehir"), onClick = onOpenMenu)
             }
         }
+      }
     }
     LaunchedEffect(first) {
         repeat(5) {
@@ -201,14 +206,18 @@ fun LumenRoom(
     }
 }
 
-/** An on/off switch; the knob sits right and the track is amber when on. */
+/** The room's one color: amber in Lumen, violet in Aura. */
+private val LocalRoomAccent = staticCompositionLocalOf { LumenPalette.Amber }
+
+/** An on/off switch; the knob sits right and the track takes the accent when on. */
 @Composable
 private fun Toggle(on: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val accent = LocalRoomAccent.current
     NeonSurface(
         onClick = onClick,
         modifier = modifier.size(width = 48.dp, height = 26.dp),
-        container = if (on) L.Amber else L.Raised,
-        focusedContainer = if (on) L.Amber else Color(0xFF2A2E38),
+        container = if (on) accent else L.Raised,
+        focusedContainer = if (on) accent else Color(0xFF2A2E38),
         focusedScale = 1.1f,
     ) {
         Box(
@@ -246,7 +255,7 @@ private fun SceneTile(id: String, active: Boolean, modifier: Modifier, onClick: 
                 Box(Modifier.size(11.dp).clip(CircleShape).background(b))
                 if (active) {
                     Spacer(Modifier.weight(1f))
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(L.Amber))
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(LocalRoomAccent.current))
                 }
             }
             Text(

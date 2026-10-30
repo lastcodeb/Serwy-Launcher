@@ -80,6 +80,8 @@ fun NeonSurface(
     val neon = st.theme == HomeTheme.NEON
     val glass = st.theme == HomeTheme.GLASS
     val lumen = st.theme == HomeTheme.LUMEN
+    // Glass, Lumen and Aura: a focused button turns white and lifts on a shadow
+    val lifted = glass || lumen || st.theme == HomeTheme.AURA
     val src = interactionSource ?: remember { MutableInteractionSource() }
     val s: Shape = if (st.modern) shape ?: Pill else RectangleShape
     val inverse = st.focusStyle == FocusStyle.INVERSE
@@ -94,7 +96,7 @@ fun NeonSurface(
     // fill (team color, light color): there the text stays light
     val focusContent = when {
         neon -> Color.White
-        (glass || lumen) && focusedContainer != null -> idleContent
+        lifted && focusedContainer != null -> idleContent
         inverse -> st.onFocus
         else -> idleContent
     }
@@ -138,8 +140,8 @@ fun NeonSurface(
             glow = if (neon) idleGlow else Glow.None,
             focusedGlow = when {
                 neon -> Glow(glowColor.copy(alpha = 0.45f), 12.dp)
-                // Glass and Lumen: the lifted white button casts a soft shadow instead of a glow
-                glass || lumen -> Glow(Color.Black.copy(alpha = 0.4f), 12.dp)
+                // Glass, Lumen and Aura: the lifted white button casts a soft shadow instead of a glow
+                lifted -> Glow(Color.Black.copy(alpha = 0.4f), 12.dp)
                 else -> Glow.None
             },
         ),

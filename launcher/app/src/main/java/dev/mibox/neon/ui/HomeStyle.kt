@@ -222,8 +222,8 @@ class HomeStyle(
 ) {
     val panelShape: Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(panelRadius)
 
-    /** Neon, Glass and Lumen: rounded pills, scale on focus, symbols in the system font. */
-    val modern: Boolean get() = theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN
+    /** Neon, Glass, Lumen and Aura: rounded pills, scale on focus, symbols in the system font. */
+    val modern: Boolean get() = theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN || theme == HomeTheme.AURA
 
     /** [neonRadius] on Neon, square corners elsewhere. */
     fun shapeOf(neonRadius: Dp): Shape = if (panelRadius == 0.dp) RectangleShape else RoundedCornerShape(neonRadius)
@@ -298,7 +298,7 @@ class HomeStyle(
     /** "✓ " in front of the chosen entry, "" otherwise. [spaces] only matters on Neon. */
     fun mark(on: Boolean, spaces: Int = 1): String = when {
         !on -> ""
-        theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN -> "✓" + " ".repeat(spaces)
+        theme == HomeTheme.NEON || theme == HomeTheme.GLASS || theme == HomeTheme.LUMEN || theme == HomeTheme.AURA -> "✓" + " ".repeat(spaces)
         theme == HomeTheme.GAZETE -> "• "
         else -> "* "
     }
@@ -398,6 +398,7 @@ fun rememberHomeStyle(theme: HomeTheme, gazeteNight: Boolean): HomeStyle {
             HomeTheme.TELETEXT -> teletextStyle()
             HomeTheme.GLASS -> glassStyle()
             HomeTheme.LUMEN -> lumenStyle()
+            HomeTheme.AURA -> auraStyle()
         }
     }
 }
@@ -721,6 +722,90 @@ internal fun lumenStyle(): HomeStyle {
         labelTracking = TextUnit.Unspecified,
         displayTracking = (-1.5).sp,
         panelRadius = 24.dp,
+        borderWidth = 1.dp,
+        chipBorderWidth = 0.75.dp,
+        chipShape = Pill,
+        focusStyle = FocusStyle.INVERSE,
+        uppercaseLabels = false,
+        symbols = true,
+        doubleRule = false,
+    )
+}
+
+/**
+ * Aura: near-black night sky, white type in Manrope, frosted chips; the color comes from the
+ * content itself (the focused card's glow, the screen's light, the room's lamp). The violet
+ * and magenta are only the fallback aura, a nod to Neon.
+ */
+object AuraPalette {
+    val Ground = Color(0xFF07080D)
+    val Surface = Color(0xFF12141C)
+    val Raised = Color(0xFF1B1E29)
+    val Text = Color(0xFFFFFFFF)
+    val Soft = Color.White.copy(alpha = 0.86f)
+    val Dim = Color.White.copy(alpha = 0.64f)
+    val Muted = Color.White.copy(alpha = 0.44f)
+    val Violet = Color(0xFF8B7BFF)
+    val Magenta = Color(0xFFFF5BD6)
+
+    /** The aura before any art has a color. */
+    val Glow = Color(0xFF7C5CFF)
+
+    /** Card fill at rest, before the art arrives. */
+    val Card = Color.White.copy(alpha = 0.07f)
+    val Frost = Color.White.copy(alpha = 0.08f)
+    val Rim = Color.White.copy(alpha = 0.16f)
+}
+
+internal fun auraStyle(): HomeStyle {
+    val a = AuraPalette
+    return HomeStyle(
+        theme = HomeTheme.AURA,
+        night = false,
+        background = a.Ground,
+        surface = a.Surface,
+        surfaceHi = a.Raised,
+        panelBorder = a.Rim,
+        text = a.Text,
+        textSoft = a.Soft,
+        textBody = Color.White.copy(alpha = 0.8f),
+        textDim = a.Dim,
+        textMuted = a.Muted,
+        accent = a.Violet,
+        accent2 = a.Violet,
+        onAccent = Color.White,
+        eyebrow = a.Dim,
+        focus = Color.White,
+        onFocus = Color(0xFF0B0C12),
+        divider = Color.White.copy(alpha = 0.10f),
+        ok = Color(0xFF5BE3A0),
+        warn = Color(0xFFFFC44D),
+        danger = Color(0xFFFF5C6C),
+        chipFill = a.Frost,
+        chipFillFocused = Color.White,
+        chipStroke = a.Rim,
+        track = Color.White.copy(alpha = 0.14f),
+        icon = Color.White.copy(alpha = 0.9f),
+        weatherIcon = Color.White,
+        placeholder = a.Card,
+        titleColor = a.Text,
+        titleBrush = null,
+        accentBrush = null,
+        ctaBrush = null,
+        barBrush = Brush.horizontalGradient(listOf(a.Violet, a.Magenta)),
+        display = TextStyle(fontFamily = LumenDisplay, fontSize = 60.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.5).sp),
+        headline = TextStyle(fontFamily = LumenDisplay, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold),
+        body = TextStyle(fontFamily = LumenSans, fontSize = 14.sp, fontWeight = FontWeight.Normal),
+        label = TextStyle(fontFamily = LumenSans, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold),
+        item = TextStyle(fontFamily = LumenSans, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+        displayFont = LumenDisplay,
+        headlineFont = LumenDisplay,
+        bodyFont = LumenSans,
+        labelFont = LumenSans,
+        fontScale = 1f,
+        labelTracking = TextUnit.Unspecified,
+        displayTracking = (-1.5).sp,
+        panelRadius = 26.dp,
         borderWidth = 1.dp,
         chipBorderWidth = 0.75.dp,
         chipShape = Pill,

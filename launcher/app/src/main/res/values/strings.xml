@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Neon</string>
+    <string name="remote_keys_desc">Opens YouTube, Netflix, Prime Video and Apple TV from the remote\'s app buttons.</string>
 </resources>

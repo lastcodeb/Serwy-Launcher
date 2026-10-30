@@ -3,7 +3,7 @@
 # Run from the PC (Git Bash): ./debloat.sh [IP:PORT]
 # Only uses "pm disable-user --user 0" -- nothing is uninstalled. Undo with restore.sh.
 
-DEV="${1:-192.168.110.31:5555}"
+DEV="${1:-192.168.110.32:5555}"
 ADB="${ADB:-/c/mibox/platform-tools/adb.exe}"
 adb_sh() { "$ADB" -s "$DEV" shell "$@"; }
 

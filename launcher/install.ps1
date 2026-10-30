@@ -1,8 +1,8 @@
 # Builds Neon, installs it on the Mi Box, grants its permission and makes it the default HOME.
 # The current launcher (Projectivy) is NOT disabled; rollback.ps1 switches back to it.
-#   powershell -ExecutionPolicy Bypass -File .\install.ps1 [-Device 192.168.110.31:5555] [-SkipBuild]
+#   powershell -ExecutionPolicy Bypass -File .\install.ps1 [-Device 192.168.110.32:5555] [-SkipBuild]
 param(
-    [string]$Device = "192.168.110.31:5555",
+    [string]$Device = "192.168.110.32:5555",
     [switch]$SkipBuild
 )
 $ErrorActionPreference = "Stop"
@@ -64,6 +64,13 @@ Adb-Shell "appops set $pkg GET_USAGE_STATS allow"
 # ask for it, so grant it here. INTERNET, KILL_BACKGROUND_PROCESSES, QUERY_ALL_PACKAGES and
 # READ_EPG_DATA are install-time permissions.
 Adb-Shell "pm grant $pkg android.permission.READ_TV_LISTINGS"
+
+# The remote's app buttons (RemoteKeys). Reinstalling unbinds an accessibility service, so it
+# is switched off and on again every time
+Adb-Shell "settings put secure enabled_accessibility_services null"
+Start-Sleep 1
+Adb-Shell "settings put secure enabled_accessibility_services $pkg/$pkg.RemoteKeys"
+Adb-Shell "settings put secure accessibility_enabled 1"
 
 # Ahead-of-time compile everything for the fastest cold start
 Adb-Shell "cmd package compile -m speed -f $pkg"

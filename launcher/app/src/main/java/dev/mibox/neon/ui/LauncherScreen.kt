@@ -24,7 +24,9 @@ import dev.mibox.neon.data.HomeTheme
 import dev.mibox.neon.data.PinResult
 import dev.mibox.neon.data.WatchItem
 import dev.mibox.neon.ui.gazete.GazeteHome
+import dev.mibox.neon.ui.aura.AuraHome
 import dev.mibox.neon.ui.glass.GlassHome
+import dev.mibox.neon.ui.lumen.LumenApps
 import dev.mibox.neon.ui.lumen.LumenHome
 import dev.mibox.neon.ui.lumen.LumenRoom
 import dev.mibox.neon.ui.teletext.TeletextHome
@@ -35,7 +37,7 @@ import dev.mibox.neon.i18n.t
 /**
  * The shell shared by every home theme: toasts, the lifecycle and polling block, the overlays
  * (menus, panels, Wrapped, the theme picker) and the style. The themed home itself is drawn
- * underneath: [NeonHome], [GazeteHome], [TeletextHome] or [GlassHome], all fed by the same [HomeActions].
+ * underneath: [NeonHome], [GazeteHome], [TeletextHome], [GlassHome], [LumenHome] or [AuraHome], all fed by the same [HomeActions].
  */
 @Composable
 fun LauncherScreen(vm: LauncherViewModel) {
@@ -55,6 +57,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
     var showWrapped by remember { mutableStateOf(false) }
     var showMatch by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
+    var showAllApps by remember { mutableStateOf(false) }
 
     // Messages to whichever home is on screen (focus restore, items that vanished)
     val signals = remember { MutableSharedFlow<HomeSignal>(extraBufferCapacity = 8) }
@@ -98,6 +101,9 @@ fun LauncherScreen(vm: LauncherViewModel) {
         }
     }
     LaunchedEffect(Unit) {
+        vm.boostMessage.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    }
+    LaunchedEffect(Unit) {
         vm.netWarning.collect { w ->
             Toast.makeText(context, t("Bağlantı 4K için yetersiz ({0} Mbps)", fmtMbps(w.mbps)), Toast.LENGTH_LONG).show()
         }
@@ -132,12 +138,21 @@ fun LauncherScreen(vm: LauncherViewModel) {
             showWrapped = false
             showMatch = false
             showTheme = false
+            showAllApps = false
         }
+    }
+    // The remote's Apps key: after the Home reset above, so it is not closed again at once
+    val allAppsRequest by vm.allAppsRequest.collectAsStateWithLifecycle()
+    LaunchedEffect(allAppsRequest) {
+        if (!allAppsRequest) return@LaunchedEffect
+        delay(80)
+        showAllApps = true
+        vm.requestAllApps(false)
     }
 
     // When the last overlay closes, tell the home to take focus back if it lost it
     val overlayOpen = menuFor != null || contentMenuFor != null || showMenu || showLight || showControl ||
-        showNet || showWrapped || showMatch || showTheme
+        showNet || showWrapped || showMatch || showTheme || showAllApps
     var hadOverlay by remember { mutableStateOf(false) }
     LaunchedEffect(overlayOpen) {
         if (overlayOpen) {
@@ -161,6 +176,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 HomeTheme.TELETEXT -> TeletextHome(vm, actions, signals)
                 HomeTheme.GLASS -> GlassHome(vm, actions, signals)
                 HomeTheme.LUMEN -> LumenHome(vm, actions, signals)
+                HomeTheme.AURA -> AuraHome(vm, actions, signals)
             }
 
             contentMenuFor?.let { item ->
@@ -213,9 +229,11 @@ fun LauncherScreen(vm: LauncherViewModel) {
                 )
             }
             if (showLight) LightPanel(vm, onDismiss = { showLight = false })
-            if (showControl && theme == HomeTheme.LUMEN) {
+            // Lumen and Aura have the room sheet; Aura's has its violet where Lumen's is amber
+            if (showControl && (theme == HomeTheme.LUMEN || theme == HomeTheme.AURA)) {
                 LumenRoom(
                     vm,
+                    accent = if (theme == HomeTheme.AURA) AuraPalette.Violet else LumenPalette.Amber,
                     onDismiss = { showControl = false },
                     onOpenLight = {
                         showControl = false
@@ -276,6 +294,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
             if (showWrapped) WrappedScreen(vm, onDismiss = { showWrapped = false })
             if (showMatch) MatchPanel(vm, onDismiss = { showMatch = false })
             if (showTheme) ThemePicker(vm, onDismiss = { showTheme = false })
+            if (showAllApps) LumenApps(vm, actions.onAppMenu) { showAllApps = false }
         }
     }
 }

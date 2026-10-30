@@ -18,6 +18,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // A home screen has nowhere to go back to
         onBackPressedDispatcher.addCallback(this) { vm.onBack() }
+        if (intent?.getBooleanExtra(EXTRA_ALL_APPS, false) == true) vm.requestAllApps()
         setContent {
             NeonTheme {
                 LauncherScreen(vm)
@@ -40,5 +41,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         vm.onHomePressed()
+        if (intent.getBooleanExtra(EXTRA_ALL_APPS, false)) vm.requestAllApps()
+    }
+
+    companion object {
+        /** Set by [RemoteKeys] for the remote's Apps key: open the grid of every app. */
+        const val EXTRA_ALL_APPS = "dev.mibox.neon.ALL_APPS"
     }
 }

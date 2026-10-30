@@ -3,7 +3,7 @@
 # settings_backup.txt (animations 1.0 / animator default, background limit default).
 # Run from the PC (Git Bash): ./restore.sh [IP:PORT]
 
-DEV="${1:-192.168.110.31:5555}"
+DEV="${1:-192.168.110.32:5555}"
 ADB="${ADB:-/c/mibox/platform-tools/adb.exe}"
 adb_sh() { "$ADB" -s "$DEV" shell "$@"; }
 

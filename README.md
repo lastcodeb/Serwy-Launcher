@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/lastcodeb/Serwy-Launcher)](https://github.com/lastcodeb/Serwy-Launcher/releases/latest)
 
 A fast, custom Android TV home screen (app name **Neon**) plus a debloat toolkit, built for the
-**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Five themes, live football
+**Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Six themes, live football
 match day with WiZ light effects, a monthly "Wrapped" of your viewing, network health, and a
 screensaver of real sea-and-sky footage picked by your local time and weather. Everything is set
 up from a Windows PC over Wi-Fi ADB. Nothing needs root.
@@ -57,6 +57,7 @@ including menus, panels and dialogs.
 | **Gazete** (Newspaper) | A front page: masthead, lead story, sports column, editor's picks and an index of every app, set in Playfair Display, Source Serif and Barlow Condensed. Day (paper) and night (ink) editions, switching automatically at sunset. |
 | **Teletext** | A 1990s teletext service: page numbers, colored fast-text keys, mosaic graphics, VT323 type, inverse-video focus. Type a page number on remotes that have digits. |
 | **Lumen** | Calm and content-first: the focused card's story and artwork in the showcase, the rows below in the Glass order with the active one bright, a quiet top bar (match, weather, light, network, clock). One amber accent, the color of the room's light; cards lift on focus like Glass. A room panel (light, scenes, sleep, system) and a grid of every app. Set in Manrope. |
+| **Aura** | The best of Neon, Glass and Lumen. Whatever has focus lends its color to everything: the card glows in it, a pool of light follows it along the row, the sky behind the story and the room's lamp take it too. Glass's frosted wash and lifting cards, Lumen's story, room panel and app grid, Neon's color. Row tabs with the next row peeking below, memory in use in the top bar (OK closes background apps), and **Sahne**: after a minute idle the home becomes a slow full-screen cinema of what you watch, with a big clock and the weather drawn over it (rain, snow, stars). Any key returns; OK opens what is on screen. Set in Manrope. |
 
 ![Theme picker](docs/screenshots/theme-picker.jpg)
 
@@ -121,6 +122,25 @@ fog, snow. Sunrise and sunset times come from Open-Meteo. Hardware-decoded, stre
 top; the WiZ light follows the scene and is restored afterwards. When the screensaver ends, the
 launcher gives the memory it used back (see [Performance](#performance)).
 
+### Remote app buttons
+Xiaomi's key service hands the remote's app buttons to Google TV Home, which the debloat
+disables, so they did nothing. A small accessibility service in the launcher (`RemoteKeys`,
+key filtering only, it reads no screen content) catches them first:
+
+| Button | Opens |
+|---|---|
+| YouTube / Netflix / Prime Video | That app (Netflix and Prime with their own button intents) |
+| Xiaomi TV+ | Apple TV |
+| Apps | The launcher's grid of every app, in any theme |
+
+### Closing apps for real
+An app may only ask Android to drop *cached* processes, so the old "Boşalt" left Netflix, Apple
+TV or Spotify running. The launcher now connects to the box's own ADB (the network port that is
+already open, `127.0.0.1:5555`) and runs `am force-stop` on every launchable app that has a
+process, then reports how many it closed. The first time, the TV asks *Allow USB debugging?* for
+the launcher's key: tick *Always allow*. The key stays in the app's private files. Without that
+approval only the cached processes are dropped, as before.
+
 ### Debloat
 `debloat.sh` disables (never uninstalls) Xiaomi analytics, ad and recommendation packages and
 other unused system apps, lowers animation scales, and swaps the Google TV launcher out.
@@ -135,11 +155,16 @@ APK. With ADB connected to the box (see [step 1](#1-enable-adb-on-the-box) and
 [step 3](#3-connect)):
 
 ```powershell
-adb install -r Serwy-Launcher-1.0.0.apk
+adb install -r Serwy-Launcher-1.1.0.apk
 adb shell appops set dev.mibox.neon GET_USAGE_STATS allow
 adb shell pm grant dev.mibox.neon android.permission.READ_TV_LISTINGS
 adb shell cmd package set-home-activity dev.mibox.neon/.MainActivity
+adb shell settings put secure enabled_accessibility_services dev.mibox.neon/dev.mibox.neon.RemoteKeys
+adb shell settings put secure accessibility_enabled 1
 ```
+
+The last two lines turn on the remote's app buttons ([Remote app buttons](#remote-app-buttons));
+run them again after every update, since reinstalling unbinds the service.
 
 The same APK is published as a Maven package in this repository's
 [GitHub Packages](https://github.com/lastcodeb/Serwy-Launcher/packages)
@@ -233,7 +258,7 @@ C:\mibox\tools\gradle-8.11.1-bin.zip      # optional, used by the wrapper
 
 ```powershell
 # 1. Connect to the box (accept the "Allow USB debugging?" prompt on the TV)
-C:\mibox\platform-tools\adb.exe connect 192.168.110.31:5555
+C:\mibox\platform-tools\adb.exe connect 192.168.110.32:5555
 
 # 2. Point the build at the SDK and (optionally) the Pixabay key
 Set-Content C:\mibox\launcher\local.properties @"
@@ -242,7 +267,7 @@ pixabay.apiKey=YOUR_PIXABAY_KEY
 "@
 
 # 3. Build, install, grant permissions, make it the default home
-powershell -ExecutionPolicy Bypass -File C:\mibox\launcher\install.ps1 -Device 192.168.110.31:5555
+powershell -ExecutionPolicy Bypass -File C:\mibox\launcher\install.ps1 -Device 192.168.110.32:5555
 
 # 4. Use it as the screensaver too
 C:\mibox\platform-tools\adb.exe shell settings put secure screensaver_components dev.mibox.neon/.dream.NeonDream
@@ -330,7 +355,7 @@ Read `debloat.sh` first; it only uses `pm disable-user --user 0` (reversible) an
 Run it from Git Bash:
 
 ```bash
-bash debloat.sh 192.168.110.31:5555
+bash debloat.sh 192.168.110.32:5555
 ```
 
 `debloat.sh` was written while Projectivy was the interim launcher; with Serwy Launcher, run
@@ -412,9 +437,9 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 | Match chip (Galatasaray) | OK | Match panel: scoreboard, *Maçı aç*, light effects, delay, preview |
 | Control center → *Neon Wrapped* | OK | Monthly story: ◀ ▶ pages, ▲ ▼ month, Back closes |
 | Light chip | OK / long-press | Light panel / toggle the first quick preset (Party) |
-| RAM chip | OK | Close background apps, shows how much was freed |
+| RAM chip | OK | Close every running app (see [Closing apps for real](#closing-apps-for-real)), shows how many and how much memory was freed |
 | Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city, theme) |
-| Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext, Lumen |
+| Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext, Lumen, Aura |
 | Home | – | Back to the top row, first card |
 
 The table describes Neon and Glass. Gazete and Teletext lay the same functions out as a
@@ -433,7 +458,9 @@ uygulamalar* → select the app.
 | Permission | Why | How it is granted |
 |---|---|---|
 | `INTERNET` | Weather, speed test, screensaver footage | Install time |
-| `KILL_BACKGROUND_PROCESSES` | "Boşalt" button | Install time |
+| `KILL_BACKGROUND_PROCESSES` | "Boşalt" button, fallback without ADB approval | Install time |
+| Accessibility service `RemoteKeys` | The remote's app buttons (key filtering only) | `settings put secure enabled_accessibility_services` in `install.ps1` |
+| ADB key (TV prompt) | "Boşalt" force-stops running apps through the box's own adbd | *Always allow* on the TV, once |
 | `QUERY_ALL_PACKAGES` | A launcher must list every app | Install time |
 | `READ_EPG_DATA` | TV provider (Watch Next, channels) | Install time |
 | `READ_TV_LISTINGS` | Lets the TV provider return other apps' Watch Next and channel rows | `pm grant` in `install.ps1` |

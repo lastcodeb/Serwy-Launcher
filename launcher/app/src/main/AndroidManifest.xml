@@ -85,6 +85,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- The remote's app buttons (YouTube, Netflix, Prime Video, TV+): see RemoteKeys -->
+        <service
+            android:name=".RemoteKeys"
+            android:exported="true"
+            android:label="Neon kumanda tuşları"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/remote_keys" />
+        </service>
+
         <!-- Galatasaray match day: alarm-driven score polling and light effects -->
         <receiver
             android:name=".MatchReceiver"

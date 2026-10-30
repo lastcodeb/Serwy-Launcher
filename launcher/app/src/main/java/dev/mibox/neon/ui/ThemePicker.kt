@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,7 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -44,6 +46,7 @@ import dev.mibox.neon.i18n.t
 
 private val PreviewW = 144.dp
 private val PreviewH = 81.dp
+private const val PREVIEW_SCALE = 0.8f
 
 private fun nameOf(t: HomeTheme) = when (t) {
     HomeTheme.NEON -> "Neon"
@@ -51,6 +54,7 @@ private fun nameOf(t: HomeTheme) = when (t) {
     HomeTheme.TELETEXT -> "Teletext"
     HomeTheme.GLASS -> t("Cam")
     HomeTheme.LUMEN -> "Lumen"
+    HomeTheme.AURA -> "Aura"
 }
 
 private fun blurbOf(t: HomeTheme) = when (t) {
@@ -59,10 +63,11 @@ private fun blurbOf(t: HomeTheme) = when (t) {
     HomeTheme.TELETEXT -> t("90'lar teletekst sayfası")
     HomeTheme.GLASS -> t("Buzlu cam ve sinema gibi büyük görseller")
     HomeTheme.LUMEN -> t("Sakin ve sinema gibi; önce kaldığın yer")
+    HomeTheme.AURA -> t("Seçtiğin şeyin ışığı ekrana ve odana yayılır")
 }
 
 /**
- * "Tema": Neon, Gazete, Teletext, Cam, each with a small drawn preview. Choosing applies at once (the
+ * "Tema": Neon, Gazete, Teletext, Cam, Lumen, Aura, each with a small drawn preview. Choosing applies at once (the
  * dialog itself re-skins); Gazete also offers its edition. Back closes; Home is handled by
  * LauncherScreen. The picker is drawn in the active theme like every other overlay.
  */
@@ -82,7 +87,7 @@ fun ThemePicker(vm: LauncherViewModel, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .ignoreOpeningPress()
-                .width(900.dp)
+                .width(912.dp)
                 .panel(st)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -149,16 +154,27 @@ private fun ThemeOption(
         focusedScale = 1.03f,
     ) {
         Column(
-            Modifier.padding(10.dp),
+            Modifier.padding(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            when (theme) {
-                HomeTheme.NEON -> NeonPreview()
-                HomeTheme.GAZETE -> GazetePreview(gazeteNight)
-                HomeTheme.TELETEXT -> TeletextPreview()
-                HomeTheme.GLASS -> GlassPreview()
-                HomeTheme.LUMEN -> LumenPreview()
+            // Six side by side: the 144×81 drawings are shown at 80%
+            Box(Modifier.size(PreviewW * PREVIEW_SCALE, PreviewH * PREVIEW_SCALE), contentAlignment = Alignment.Center) {
+                Box(
+                    Modifier.requiredSize(PreviewW, PreviewH).graphicsLayer {
+                        scaleX = PREVIEW_SCALE
+                        scaleY = PREVIEW_SCALE
+                    },
+                ) {
+                    when (theme) {
+                        HomeTheme.NEON -> NeonPreview()
+                        HomeTheme.GAZETE -> GazetePreview(gazeteNight)
+                        HomeTheme.TELETEXT -> TeletextPreview()
+                        HomeTheme.GLASS -> GlassPreview()
+                        HomeTheme.LUMEN -> LumenPreview()
+                        HomeTheme.AURA -> AuraPreview()
+                    }
+                }
             }
             Text(
                 st.mark(selected) + nameOf(theme),
@@ -168,8 +184,8 @@ private fun ThemeOption(
             Text(
                 blurbOf(theme),
                 style = st.type(11.sp, color = Color.Unspecified, role = TextRole.BODY).copy(textAlign = TextAlign.Center),
-                maxLines = 2,
-                modifier = Modifier.height(30.dp),
+                maxLines = 3,
+                modifier = Modifier.height(42.dp),
             )
         }
     }
@@ -361,6 +377,49 @@ private fun LumenPreview() {
                 Box(Modifier.size(width = 27.dp, height = 15.dp).border(1.dp, l.Amber, RoundedCornerShape(3.dp)).padding(2.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF5B3A2A)))
                 repeat(3) { Box(Modifier.size(width = 27.dp, height = 15.dp).clip(RoundedCornerShape(3.dp)).background(l.Raised)) }
             }
+        }
+    }
+}
+
+@Composable
+private fun AuraPreview() {
+    val a = AuraPalette
+    Box(Modifier.size(PreviewW, PreviewH).clip(RoundedCornerShape(6.dp)).background(a.Ground)) {
+        // The aura: a colored light behind the title and under the focused card
+        Box(
+            Modifier
+                .align(Alignment.TopEnd)
+                .size(96.dp)
+                .background(Brush.radialGradient(listOf(a.Magenta.copy(alpha = 0.42f), Color.Transparent))),
+        )
+        Box(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 4.dp)
+                .size(width = 70.dp, height = 40.dp)
+                .background(Brush.radialGradient(listOf(a.Violet.copy(alpha = 0.55f), Color.Transparent))),
+        )
+        Text(
+            "Dune",
+            modifier = Modifier.padding(start = 7.dp, top = 14.dp),
+            style = TextStyle(fontFamily = LumenDisplay, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, color = a.Text),
+        )
+        Row(Modifier.padding(start = 7.dp, top = 40.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.size(width = 18.dp, height = 2.dp).clip(Pill).background(a.Violet))
+            repeat(2) { Box(Modifier.size(width = 14.dp, height = 2.dp).clip(Pill).background(a.Muted)) }
+        }
+        Row(
+            Modifier.align(Alignment.BottomStart).padding(start = 7.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                Modifier
+                    .size(width = 34.dp, height = 20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Brush.linearGradient(listOf(a.Violet, a.Magenta))),
+            )
+            repeat(3) { Box(Modifier.size(width = 28.dp, height = 16.dp).clip(RoundedCornerShape(3.dp)).background(a.Card)) }
         }
     }
 }

@@ -9,6 +9,7 @@ import dev.mibox.neon.i18n.t
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
+import kotlin.random.Random
 
 /** One "continue watching" entry an app published to the system Watch Next list. */
 @Immutable
@@ -55,14 +56,25 @@ object WatchNext {
     /**
      * What apps recommend on their home-screen channels ("Senin için"), at most [perApp] per app,
      * dealt round-robin so one app never fills the row. Titles already in [exclude] are skipped.
+     * Each app's picks come from its newest [pool] programs (higher row ids are newer), drawn at
+     * random, and the apps take turns in a random order: the row changes from visit to visit
+     * even when the apps rarely refresh their channels.
      */
-    fun previews(ctx: Context, perApp: Int = 3, max: Int = 24, exclude: Set<String> = emptySet()): List<WatchItem> {
+    fun previews(
+        ctx: Context,
+        perApp: Int = 3,
+        max: Int = 24,
+        pool: Int = 10,
+        exclude: Set<String> = emptySet(),
+        random: Random = Random.Default,
+    ): List<WatchItem> {
         val byApp = read(ctx, PREVIEW_URI)
             .filter { it.imageUri != null && it.title !in exclude }
+            .sortedByDescending { it.id }
             .distinctBy { it.title }
             .groupBy { it.pkg }
-            .mapValues { it.value.take(perApp) }
-            .values.toList()
+            .mapValues { it.value.take(pool).shuffled(random).take(perApp) }
+            .values.shuffled(random)
         val out = ArrayList<WatchItem>()
         var i = 0
         while (out.size < max && byApp.any { i < it.size }) {

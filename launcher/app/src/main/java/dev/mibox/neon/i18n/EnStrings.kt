@@ -473,4 +473,12 @@ internal val EN: Map<String, String> = mapOf(
     "Karşılaştırma için önceki ay verisi yok" to "No previous month to compare with",
     "Farklı uygulama" to "Different apps",
     "Aktif gün" to "Active days",
+    // Aura
+    "Seçtiğin şeyin ışığı ekrana ve odana yayılır" to "What you pick lights up the screen and the room",
+    "RAM %{0}" to "RAM {0}%",
+    // Clean-up
+    "Açık uygulama yoktu" to "No apps were open",
+    "{0} uygulama kapatıldı" to "Closed {0} apps",
+    "Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
+        "To close apps, answer the TV's debugging prompt with \"Always allow\", then try again",
 )
