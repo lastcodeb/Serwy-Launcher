@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/lastcodeb/Serwy-Launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/lastcodeb/Serwy-Launcher/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/lastcodeb/Serwy-Launcher)](https://github.com/lastcodeb/Serwy-Launcher/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A fast, custom Android TV home screen (app name **Neon**) plus a debloat toolkit, built for the
 **Xiaomi Mi TV Box S (2nd Gen)** running Google TV / Android 11. Six themes, live football
@@ -653,14 +654,18 @@ bash restore.sh <BOX_IP>:5555
   [VT323](https://fonts.google.com/specimen/VT323),
   [Manrope](https://fonts.google.com/specimen/Manrope) (subset to Latin and Turkish). The Glass
   theme uses the system sans (Roboto).
-- **Fixtures, live scores and team crests**: ESPN's public API; crests belong to their clubs.
+- **Fixtures, live scores and team crests**: ESPN's public API; crests belong to their clubs
+  and are downloaded at run time, not shipped with the app.
+- **Live scores**: Maçkolik's public live feed, read the way its own site reads it; no affiliation.
 - **Weather, sunrise/sunset, geocoding**: [Open-Meteo](https://open-meteo.com/), data under
   CC BY 4.0.
 - **Screensaver footage**: streamed from [Pixabay](https://pixabay.com/) under the Pixabay
   Content License (no attribution required).
 - **Watch Next / channels / app banners and icons** belong to their respective apps and are shown
   as published by them on the device.
-- WiZ, Xiaomi, Google TV and the app names shown are trademarks of their owners; this project is
-  not affiliated with any of them.
+- WiZ, Xiaomi, Google TV, Galatasaray, beIN CONNECT, Maçkolik, ESPN and the app names shown are
+  trademarks of their owners; this project is not affiliated with or endorsed by any of them.
 
-Private project, all rights reserved.
+The source code is released under the [MIT License](LICENSE). The license covers this project's
+own code, scripts and docs only: fonts keep their SIL Open Font License, and club names, crests,
+logos and third-party data stay with their owners.
