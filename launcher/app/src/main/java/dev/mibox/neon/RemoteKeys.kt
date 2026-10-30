@@ -17,8 +17,36 @@ import android.view.accessibility.AccessibilityEvent
  * dev.mibox.neon/dev.mibox.neon.RemoteKeys
  */
 class RemoteKeys : AccessibilityService() {
+    private lateinit var kickoff: KickoffAlert
+
+    override fun onServiceConnected() {
+        kickoff = KickoffAlert(this)
+        instance = this
+    }
+
+    override fun onDestroy() {
+        if (instance === this) instance = null
+        if (::kickoff.isInitialized) kickoff.hide()
+        super.onDestroy()
+    }
+
+    /** Shows the "Maç başlıyor" card over whatever is on screen. */
+    fun showKickoff(teams: String, pkg: String?) = kickoff.show(teams, pkg)
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        // While the kickoff card shows, OK opens the match and Back closes it; nothing else changes
+        if (::kickoff.isInitialized && kickoff.showing) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_NUMPAD_ENTER -> {
+                    if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) kickoff.open()
+                    return true
+                }
+                KeyEvent.KEYCODE_BACK -> {
+                    if (event.action == KeyEvent.ACTION_DOWN) kickoff.hide()
+                    return true
+                }
+            }
+        }
         if (event.keyCode == KeyEvent.KEYCODE_ALL_APPS) {
             // Android's own app list lives in Google TV Home, which is disabled: show ours
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
@@ -58,11 +86,16 @@ class RemoteKeys : AccessibilityService() {
     /** [action]/[activity]: the intent the app expects from its own button, when it has one. */
     private class Target(val pkg: String, val action: String? = null, val activity: String? = null)
 
-    private companion object {
-        const val TAG = "NeonKeys"
+    companion object {
+        /** The running service, for [MatchReceiver]'s kickoff card; null while it is not bound. */
+        @Volatile
+        var instance: RemoteKeys? = null
+            private set
+
+        private const val TAG = "NeonKeys"
 
         // Key codes from /vendor/usr/keylayout/Vendor_2717_Product_32b9.kl (the Mi remote)
-        val Buttons = mapOf(
+        private val Buttons = mapOf(
             KeyEvent.KEYCODE_BUTTON_3 to Target("com.google.android.youtube.tv"),
             KeyEvent.KEYCODE_BUTTON_6 to Target("com.netflix.ninja", action = "com.netflix.action.NETFLIX_KEY_START"),
             KeyEvent.KEYCODE_BUTTON_7 to Target(

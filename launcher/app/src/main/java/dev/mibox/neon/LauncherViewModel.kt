@@ -518,6 +518,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     /** Plays the goal strobe now (through the light mutex; a light that is off stays off). */
     fun testGoalEffect() = playMatchEffect(MatchEffectKind.GOAL)
 
+    /** The minute-before-kickoff card over the screen, with its light, for the next fixture. */
+    fun testKickoffAlert() = MatchAlarms.testHeadsUp(getApplication())
+
     /** Plays any of the match effects now. */
     fun testMatchEffect(kind: MatchEffectKind) = playMatchEffect(kind)
 

@@ -41,6 +41,7 @@ class MatchReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     MatchAlarms.ACTION_POLL -> poll(app)
+                    MatchAlarms.ACTION_HEADS_UP -> headsUp(app, test = intent.getBooleanExtra(MatchAlarms.EXTRA_TEST, false))
                     MatchAlarms.ACTION_EFFECT -> {
                         val kind = runCatching { MatchEffectKind.valueOf(intent.getStringExtra(MatchAlarms.EXTRA_KIND).orEmpty()) }.getOrNull()
                         if (kind != null) effect(app, kind)
@@ -116,11 +117,38 @@ class MatchReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun effect(ctx: Context, kind: MatchEffectKind) {
+    /**
+     * A minute before kickoff: the card on screen (OK opens the match app, beIN CONNECT when none is
+     * chosen) and the light blinking in the club's colors. [test] shows it for the next fixture now.
+     */
+    private fun headsUp(ctx: Context, test: Boolean) {
+        val prefs = Prefs(ctx)
+        if (!test && !runBlocking { prefs.matchEnabled.first() }) return
+        val now = System.currentTimeMillis()
+        val fixtures = MatchStore(ctx).fixtures()
+        val fx = if (test) {
+            fixtures.filter { it.phase == MatchPhase.PRE }.minByOrNull { it.kickoffMs } ?: fixtures.lastOrNull()
+        } else {
+            val track = MatchStore(ctx).track() ?: return
+            fixtures.firstOrNull { it.eventId == track.eventId }
+                ?.takeIf { it.phase == MatchPhase.PRE && it.kickoffMs - now in -HEADS_UP_LATE_MS..HEADS_UP_EARLY_MS }
+        } ?: return
+        val teams = if (fx.home) "Galatasaray – ${fx.opponent}" else "${fx.opponent} – Galatasaray"
+        val chosen = runBlocking { prefs.matchApp.first() }
+        val app = chosen ?: KickoffAlert.BEIN.takeIf { pkg ->
+            runCatching { ctx.packageManager.getApplicationInfo(pkg, 0).enabled }.getOrDefault(false)
+        }
+        Log.i(TAG, "heads-up $teams -> $app (service ${RemoteKeys.instance != null})")
+        RemoteKeys.instance?.showKickoff(teams, app)
+        effect(ctx, MatchEffectKind.HEADS_UP, force = test)
+    }
+
+    private fun effect(ctx: Context, kind: MatchEffectKind, force: Boolean = false) {
         Log.i(TAG, "effect $kind")
         val prefs = Prefs(ctx)
-        if (!runBlocking { prefs.matchEnabled.first() }) return
-        if (kind != MatchEffectKind.KICKOFF && !runBlocking { prefs.matchGoalEffect.first() }) return
+        if (!force && !runBlocking { prefs.matchEnabled.first() }) return
+        val always = kind == MatchEffectKind.KICKOFF || kind == MatchEffectKind.HEADS_UP
+        if (!always && !runBlocking { prefs.matchGoalEffect.first() }) return
         MatchBridge.sink?.let {
             it(kind)
             return
@@ -142,6 +170,8 @@ class MatchReceiver : BroadcastReceiver() {
         const val TAG = "NeonMatch"
         const val POLL_MS = 50_000L
         const val LATE_KICKOFF_MS = 20L * 60 * 1000
+        const val HEADS_UP_EARLY_MS = 3L * 60 * 1000
+        const val HEADS_UP_LATE_MS = 5L * 60 * 1000
         val EffectLock = Any()
     }
 }
@@ -150,9 +180,15 @@ class MatchReceiver : BroadcastReceiver() {
 object MatchAlarms {
     const val ACTION_POLL = "dev.mibox.neon.MATCH_POLL"
     const val ACTION_EFFECT = "dev.mibox.neon.MATCH_EFFECT"
+    const val ACTION_HEADS_UP = "dev.mibox.neon.MATCH_HEADS_UP"
     const val EXTRA_KIND = "kind"
+    const val EXTRA_TEST = "test"
     private const val CODE_POLL = 7001
     private const val CODE_EFFECT = 7002
+    private const val CODE_HEADS_UP = 7003
+
+    /** The kickoff card comes this long before kickoff. */
+    private const val HEADS_UP_MS = 60_000L
     private const val POLL_GRACE_MS = 30_000L
 
     private fun pollIntent(ctx: Context) = Intent(ctx, MatchReceiver::class.java).setAction(ACTION_POLL)
@@ -171,6 +207,10 @@ object MatchAlarms {
             .filter { it.phase == MatchPhase.PRE || it.phase == MatchPhase.LIVE }
             .filter { now <= it.kickoffMs + MatchConfig.WINDOW_MS && it.kickoffMs - now <= MatchConfig.ARM_AHEAD_MS }
             .minByOrNull { it.kickoffMs } ?: return
+        // Re-arming moves it along with a rescheduled kickoff (one pending intent, replaced)
+        if (next.phase == MatchPhase.PRE && next.kickoffMs - HEADS_UP_MS > now) {
+            set(app, headsUpPending(app), next.kickoffMs - HEADS_UP_MS)
+        }
         val store = MatchStore(app)
         val old = store.track()
         val moved = old != null && old.eventId == next.eventId && old.kickoffMs != next.kickoffMs
@@ -203,9 +243,21 @@ object MatchAlarms {
         set(ctx, PendingIntent.getBroadcast(ctx, CODE_EFFECT, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT), atMs)
     }
 
+    private fun headsUpPending(ctx: Context) = PendingIntent.getBroadcast(
+        ctx, CODE_HEADS_UP,
+        Intent(ctx, MatchReceiver::class.java).setAction(ACTION_HEADS_UP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
+    /** The kickoff card and its light, now, for the next fixture (match panel's "dene"). */
+    fun testHeadsUp(ctx: Context) {
+        ctx.sendBroadcast(Intent(ctx, MatchReceiver::class.java).setAction(ACTION_HEADS_UP).putExtra(EXTRA_TEST, true))
+    }
+
     /** Stops polling and forgets the match (pending effect alarms check the setting when they fire). */
     fun cancel(ctx: Context) {
         val app = ctx.applicationContext
+        app.getSystemService(AlarmManager::class.java).cancel(headsUpPending(app))
         app.getSystemService(AlarmManager::class.java).cancel(pollPending(app, PendingIntent.FLAG_UPDATE_CURRENT))
         MatchStore(app).clearTrack()
     }

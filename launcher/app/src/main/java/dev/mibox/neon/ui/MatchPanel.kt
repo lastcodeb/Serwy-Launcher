@@ -323,6 +323,7 @@ fun MatchPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                             },
                             leading = "⚡",
                         )
+                        Chip(t("Maç bildirimini dene"), onClick = vm::testKickoffAlert, leading = "🔔")
 
                         Section(t("Yayın gecikmesi (sn)"))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

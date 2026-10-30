@@ -481,6 +481,11 @@ internal val EN: Map<String, String> = mapOf(
     "{0} uygulama kapatıldı" to "Closed {0} apps",
     "Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
         "To close apps, answer the TV's debugging prompt with \"Always allow\", then try again",
+    // Kickoff card
+    "⚽  Maç başlıyor" to "⚽  Kick-off",
+    "{0} · 1 dk sonra" to "{0} · in 1 min",
+    "OK: {0}'te izle   ·   Geri: kapat" to "OK: watch on {0}   ·   Back: close",
+    "Maç bildirimini dene" to "Try the kick-off alert",
     // Now playing
     "Müzik kontrolü için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
         "For music controls, answer the TV's debugging prompt with \"Always allow\", then try again",

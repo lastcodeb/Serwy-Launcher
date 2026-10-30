@@ -103,6 +103,12 @@ Local UDP control (port 38899), no cloud, discovered automatically.
 - Fixtures and live scores come from ESPN's public API (Süper Lig, Champions League, Europa
   League, Conference League); crests are cached on the box.
 
+**Kick-off card**: a minute before kickoff a *Maç başlıyor* card appears over whatever is on
+screen (it is an overlay of the `RemoteKeys` accessibility service, so the app underneath keeps
+playing and no extra permission is needed) while the WiZ light blinks yellow and red for ten
+seconds. OK opens the match app (beIN CONNECT when none is chosen), Back closes it; it goes away
+by itself after 75 s. *Maç bildirimini dene* in the match panel shows it right away.
+
 ### Neon Wrapped
 A monthly story of your viewing, built from the system's usage history: hours watched, most
 watched apps, busiest day and hour, longest session, streaks, a comparison with the previous

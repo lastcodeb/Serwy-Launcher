@@ -91,7 +91,12 @@ enum class MatchPhase { PRE, LIVE, POST, OFF }
 enum class MatchResult { WIN, DRAW, LOSS }
 
 /** What the light effects can play. */
-enum class MatchEffectKind { KICKOFF, GOAL, WIN }
+enum class MatchEffectKind {
+    KICKOFF, GOAL, WIN,
+
+    /** A minute before kickoff, with the on-screen card: ten seconds of red/yellow blinking. */
+    HEADS_UP,
+}
 
 /** Raw fixture as ESPN reports it. Scores are Galatasaray's ([gs]) and the opponent's ([opp]). */
 @Immutable
@@ -478,6 +483,12 @@ object MatchEffects {
                     red = !red
                     delay(230)
                 }
+            }
+            MatchEffectKind.HEADS_UP -> repeat(10) {
+                set(Wiz.color(Yellow, 100))
+                delay(500)
+                set(Wiz.color(Red, 100))
+                delay(500)
             }
             // Slower, warmer: about 6 s of red/yellow waves ending on yellow
             MatchEffectKind.WIN -> {
