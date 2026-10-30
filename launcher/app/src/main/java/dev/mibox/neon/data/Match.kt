@@ -526,6 +526,7 @@ class MatchStore(ctx: Context) {
 object MatchEffects {
     private val Red = MatchConfig.Team.primary
     private val Yellow = MatchConfig.Team.secondary
+    private val Off: JSONObject get() = JSONObject().put("state", false)
 
     /** Plays [kind] through [set]; the caller snapshots the light before and restores it after. */
     suspend fun play(kind: MatchEffectKind, set: (JSONObject) -> Unit) {
@@ -537,14 +538,22 @@ object MatchEffects {
                 set(Wiz.color(Yellow, 100))
                 delay(450)
             }
-            // About 8 s of fast red/yellow strobing
+            // Must stand out from a colorful scene (Party): a blackout, three white flashes, then
+            // about 8 s of full red/yellow blocks, slow enough to read as the club's colors
             MatchEffectKind.GOAL -> {
-                val end = System.nanoTime() + 8_000_000_000L
-                var red = true
-                while (System.nanoTime() < end) {
-                    set(Wiz.color(if (red) Red else Yellow, 100))
-                    red = !red
-                    delay(230)
+                set(Off)
+                delay(700)
+                repeat(3) {
+                    set(Wiz.white(6500, 100))
+                    delay(180)
+                    set(Off)
+                    delay(180)
+                }
+                repeat(9) {
+                    set(Wiz.color(Red, 100))
+                    delay(450)
+                    set(Wiz.color(Yellow, 100))
+                    delay(450)
                 }
             }
             MatchEffectKind.HEADS_UP -> repeat(10) {
