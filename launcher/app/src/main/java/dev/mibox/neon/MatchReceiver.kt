@@ -110,7 +110,8 @@ class MatchReceiver : BroadcastReceiver() {
             store.clearTrack()
             MatchAlarms.armNext(ctx, afterEvent = track.eventId)
         } else {
-            MatchAlarms.schedulePoll(ctx, now + POLL_MS)
+            // While the ball rolls every second counts: the light should come with the goal
+            MatchAlarms.schedulePoll(ctx, now + if (snap.phase == MatchPhase.LIVE) LIVE_POLL_MS else POLL_MS)
         }
         if (kickoffNow) {
             if (delayMs > 0) MatchAlarms.scheduleEffect(ctx, MatchEffectKind.KICKOFF, now + delayMs) else effect(ctx, MatchEffectKind.KICKOFF)
@@ -170,6 +171,7 @@ class MatchReceiver : BroadcastReceiver() {
     private companion object {
         const val TAG = "NeonMatch"
         const val POLL_MS = 50_000L
+        const val LIVE_POLL_MS = 15_000L
         const val LATE_KICKOFF_MS = 20L * 60 * 1000
         const val HEADS_UP_EARLY_MS = 3L * 60 * 1000
         const val HEADS_UP_LATE_MS = 5L * 60 * 1000

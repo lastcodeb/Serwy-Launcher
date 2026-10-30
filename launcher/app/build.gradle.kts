@@ -76,4 +76,6 @@ dependencies {
     implementation("dev.mobile:dadb:1.2.10")
 
     testImplementation("junit:junit:4.13.2")
+    // The real org.json: Android's is a stub in JVM unit tests
+    testImplementation("org.json:json:20240303")
 }

@@ -65,7 +65,7 @@ object MatchConfig {
 
     /** Choices for the broadcast delay setting, in seconds. */
     val DelayOptions = listOf(0, 15, 30, 45, 60, 90)
-    const val DEFAULT_DELAY_S = 30
+    const val DEFAULT_DELAY_S = 0
 
     /** The newest finished fixture is cached this long, for the "last result" line. */
     const val LAST_RESULT_KEEP_MS = 14L * 24 * 60 * 60 * 1000
@@ -220,8 +220,27 @@ object MatchSource {
         return out.values.sortedBy { it.kickoffMs }
     }
 
-    /** Current state of one event, or null when ESPN doesn't list it for that day. */
+    /**
+     * Current state of one event, or null when neither source knows it. The score and the phase
+     * come from Maçkolik, which shows a goal within ~30 s; ESPN's scoreboard lags one to two
+     * minutes and is only the fallback (and the source of the phase name).
+     */
     fun live(slug: String, eventId: String, kickoffMs: Long): LiveSnapshot? {
+        val mk = runCatching { Mackolik.live(kickoffMs) }
+            .onFailure { android.util.Log.w("NeonMatch", "maçkolik unavailable", it) }
+            .getOrNull()
+        val espn = if (mk == null) {
+            espnLive(slug, eventId, kickoffMs)
+        } else {
+            runCatching { espnLive(slug, eventId, kickoffMs) }.getOrNull()
+        }
+        if (mk == null) return espn
+        // ESPN may notice a kickoff Maçkolik has not marked yet; otherwise Maçkolik leads
+        val phase = if (mk.phase == MatchPhase.PRE && espn?.phase == MatchPhase.LIVE) MatchPhase.LIVE else mk.phase
+        return LiveSnapshot(phase, espn?.statusName ?: mk.statusName, mk.clock, mk.gs ?: espn?.gs, mk.opp ?: espn?.opp)
+    }
+
+    private fun espnLive(slug: String, eventId: String, kickoffMs: Long): LiveSnapshot? {
         val comp = MatchConfig.Competitions.firstOrNull { it.slug == slug } ?: return null
         for (shift in listOf(0L, -DAY_MS)) {
             // BASIC_ISO_DATE would append the offset ("20261021Z"), which ESPN rejects with HTTP 400
@@ -359,6 +378,50 @@ object MatchSource {
 
     private const val DAY_MS = 24L * 60 * 60 * 1000
     private val DAY_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd")
+}
+
+/**
+ * Maçkolik's live feed (`vd.mackolik.com/livedata?date=dd/MM/yyyy`, no key, cached ≤ 30 s), the
+ * one Turkish sites use. Each match is a positional array: [1] home id, [3] away id, [5] status
+ * (0 not started, 1 first half, 2 half time, 3 second half, 5–8 extra time and penalties,
+ * 4/10/11 finished, 9 postponed), [6] minute, [12]/[13] home/away goals, [16] kickoff "HH:mm" in
+ * Turkish time. Galatasaray is team 1.
+ */
+internal object Mackolik {
+    private const val TEAM = 1
+    private val Zone: ZoneId = ZoneId.of("Europe/Istanbul")
+    private val Day = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+    private val Time = DateTimeFormatter.ofPattern("HH:mm")
+
+    fun live(kickoffMs: Long): LiveSnapshot? {
+        val ko = Instant.ofEpochMilli(kickoffMs).atZone(Zone)
+        val matches = JSONObject(httpGet("https://vd.mackolik.com/livedata?date=${Day.format(ko)}")).optJSONArray("m") ?: return null
+        return find(matches, Time.format(ko))
+    }
+
+    /** The followed team's match kicking off at [kickoff] ("HH:mm", Turkish time) in [matches]. */
+    internal fun find(matches: JSONArray, kickoff: String): LiveSnapshot? {
+        for (i in 0 until matches.length()) {
+            val m = matches.optJSONArray(i) ?: continue
+            val home = m.optInt(1)
+            val away = m.optInt(3)
+            if ((home != TEAM && away != TEAM) || m.optString(16) != kickoff) continue
+            val status = m.optInt(5)
+            val phase = when (status) {
+                0 -> MatchPhase.PRE
+                1, 2, 3, 5, 6, 7, 8 -> MatchPhase.LIVE
+                4, 10, 11 -> MatchPhase.POST
+                9 -> MatchPhase.OFF
+                else -> continue // another sport's numbering
+            }
+            val h = m.optInt(12, -1).takeIf { it >= 0 }
+            val a = m.optInt(13, -1).takeIf { it >= 0 }
+            val minute = m.optString(6).trim()
+            val clock = if (minute.isNotEmpty() && minute.all(Char::isDigit)) "$minute'" else minute
+            return LiveSnapshot(phase, "MK_$status", clock, if (home == TEAM) h else a, if (home == TEAM) a else h)
+        }
+        return null
+    }
 }
 
 /** What the alarm chain remembers between polls: which event, and what was already reacted to. */

@@ -73,16 +73,16 @@ class Backup(private val ctx: Context, private val prefs: Prefs, private val adb
     private fun read(uri: Uri): String = ctx.contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() }
 
     /** Our own backup file, newest first; MediaStore shows an app only the files it wrote. */
-    private fun ownFile(): Uri? {
+    private fun ownFile(): Uri? = runCatching {
         val collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
-        return ctx.contentResolver.query(
+        ctx.contentResolver.query(
             collection,
             arrayOf(MediaStore.MediaColumns._ID),
             "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?",
             arrayOf(RELATIVE, "$NAME_PREFIX%"),
             "${MediaStore.MediaColumns.DATE_MODIFIED} DESC",
         )?.use { c -> if (c.moveToFirst()) Uri.withAppendedPath(collection, c.getLong(0).toString()) else null }
-    }
+    }.onFailure { Log.w(TAG, "downloads not readable (yet)", it) }.getOrNull()
 
     private fun insert(): Uri = ctx.contentResolver.insert(
         MediaStore.Downloads.EXTERNAL_CONTENT_URI,
