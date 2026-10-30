@@ -289,16 +289,6 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
     val dot = animateColorAsState(aura.color, tween(600), label = "auraDot")
 
     Row(Modifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.CenterVertically) {
-        // The wordmark's dot is the aura itself
-        Box(
-            Modifier.size(9.dp).drawBehind {
-                drawCircle(dot.value.copy(alpha = 0.35f), radius = size.minDimension)
-                drawCircle(dot.value)
-            },
-        )
-        Spacer(Modifier.width(9.dp))
-        Text("serwan", style = TextStyle(fontFamily = LumenDisplay, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp, color = A.Text))
-        Spacer(Modifier.width(14.dp))
         val day = now.dayOfWeek.getDisplayName(JTextStyle.FULL, TR)
         Text(
             "${greeting(now.hour)} · $day ${now.format(DayFmt)}",
