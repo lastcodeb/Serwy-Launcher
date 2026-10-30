@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -75,9 +76,12 @@ fun TopBar(
     onOpenControl: () -> Unit,
     onOpenNet: () -> Unit,
     onOpenMatch: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenMedia: () -> Unit,
 ) {
     val match by vm.match.collectAsStateWithLifecycle()
     val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
+    val playing by vm.nowPlaying.collectAsStateWithLifecycle()
     // Minute tick: the countdown and the day words re-evaluate here
     val tick by rememberNow()
     val nowMs = tick.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -86,13 +90,25 @@ fun TopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        ClockWeatherChip(vm, compact = matchOn, onOpen = onOpenControl)
+        ClockWeatherChip(vm, compact = matchOn || playing != null, onOpen = onOpenControl)
         // Always there while match day is on; the simulated state counts as on
         if (matchOn || match != null) MatchChip(match, nowMs, onOpenMatch)
         Spacer(Modifier.weight(1f))
+        // Only while another app plays (or holds a paused track)
+        nowPlayingLabel(playing, max = 22)?.let { label ->
+            Chip(label, onClick = onOpenMedia, onLongClick = vm::mediaToggle, leading = "♪")
+        }
         LightChip(vm, onOpenLight)
         SpeedChip(vm, onOpenNet)
         RamChip(vm)
+        NeonSurface(onClick = onOpenSearch, modifier = Modifier.size(35.dp), shape = CircleShape) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = t("Ara"),
+                modifier = Modifier.size(20.dp).align(Alignment.Center),
+                tint = Neon.Icon,
+            )
+        }
         NeonSurface(
             onClick = vm::openSystemSettings,
             onLongClick = onOpenMenu,

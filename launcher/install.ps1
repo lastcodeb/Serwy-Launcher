@@ -71,6 +71,8 @@ Adb-Shell "settings put secure enabled_accessibility_services null"
 Start-Sleep 1
 Adb-Shell "settings put secure enabled_accessibility_services $pkg/$pkg.RemoteKeys"
 Adb-Shell "settings put secure accessibility_enabled 1"
+# Now playing (play/pause for Spotify & co.): a notification listener that reads no notifications
+Adb-Shell "cmd notification allow_listener $pkg/$pkg.data.MediaListener"
 
 # Ahead-of-time compile everything for the fastest cold start
 Adb-Shell "cmd package compile -m speed -f $pkg"

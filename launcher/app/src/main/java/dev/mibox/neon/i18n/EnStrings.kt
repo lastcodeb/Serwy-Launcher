@@ -481,4 +481,39 @@ internal val EN: Map<String, String> = mapOf(
     "{0} uygulama kapatıldı" to "Closed {0} apps",
     "Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
         "To close apps, answer the TV's debugging prompt with \"Always allow\", then try again",
+    // Now playing
+    "Müzik kontrolü için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
+        "For music controls, answer the TV's debugging prompt with \"Always allow\", then try again",
+    "Müzik kontrolü kapalı" to "Music controls are off",
+    "Spotify gibi arka planda çalan uygulamaları buradan durdurup geçebilmek için bir kez izin vermen gerekiyor." to
+        "Allow it once to pause and skip apps like Spotify that play in the background.",
+    "İzin ver" to "Allow",
+    "Şu an çalan bir şey yok" to "Nothing is playing",
+    "Spotify ya da YouTube Music'te bir şey başlat, burada görünür." to "Start something in Spotify or YouTube Music and it shows up here.",
+    "duraklatıldı" to "paused",
+    "Uygulamayı aç" to "Open app",
+    "Çalıyor" to "Playing",
+    // Search
+    "Ara" to "Search",
+    "Uygulama, dizi, film ya da şarkı…" to "An app, show, film or song…",
+    "Sesle ara" to "Voice search",
+    "Yazınca uygulamalar ve arama yerleri burada çıkar" to "Start typing to see apps and places to search",
+    "İçinde ara" to "Search in",
+    // Backup
+    "Gizli uygulamalar ({0}) · Şehir · Yedek" to "Hidden apps ({0}) · City · Backup",
+    "Gizli uygulamalar · Şehir · Yedek" to "Hidden apps · City · Backup",
+    "💾   Yedek ve geri yükleme" to "💾   Backup and restore",
+    "Yedek" to "Backup",
+    "Son yedek: {0}. Ayar değiştikçe kendiliğinden güncellenir." to "Last backup: {0}. It updates itself whenever a setting changes.",
+    "Favoriler, sıralama, gizli uygulamalar, tema, şehir ve ışık ayarları İndirilenler/Serwy klasörüne yazılır; launcher silinse de kalır." to
+        "Favorites, order, hidden apps, theme, city and light settings go to the Download/Serwy folder and stay there even if the launcher is removed.",
+    "💾   Şimdi yedekle" to "💾   Back up now",
+    "↺   Yedekten geri yükle" to "↺   Restore from backup",
+    "Ayarlar yedeklendi: İndirilenler/Serwy" to "Settings backed up to Download/Serwy",
+    "Yedek yazılamadı" to "Couldn't write the backup",
+    "Ayarlar geri yüklendi" to "Settings restored",
+    "Yedek bulunamadı" to "No backup found",
+    "Yedek dosyası okunamadı" to "Couldn't read the backup file",
+    "Yedeği okumak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene" to
+        "To read the backup, answer the TV's debugging prompt with \"Always allow\", then try again",
 )

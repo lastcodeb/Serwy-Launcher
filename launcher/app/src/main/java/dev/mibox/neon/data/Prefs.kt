@@ -3,13 +3,17 @@ package dev.mibox.neon.data
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
@@ -253,6 +257,51 @@ class Prefs(private val ctx: Context) {
             it[CITY_NAME] = city.name
             it[CITY_LAT] = city.lat
             it[CITY_LON] = city.lon
+        }
+    }
+
+    // --- Backup -------------------------------------------------------------------------------
+    /** Fires on every change of any setting (for the automatic backup). */
+    val changes: Flow<Preferences> = ctx.store.data
+
+    /** Every setting, typed: {"order": {"s": "a,b"}, "hidden": {"ss": [...]}, …}. */
+    suspend fun export(): JSONObject {
+        val out = JSONObject()
+        for ((key, value) in ctx.store.data.first().asMap()) {
+            val typed = when (value) {
+                is String -> JSONObject().put("s", value)
+                is Boolean -> JSONObject().put("b", value)
+                is Int -> JSONObject().put("i", value)
+                is Long -> JSONObject().put("l", value)
+                is Double -> JSONObject().put("d", value)
+                is Float -> JSONObject().put("f", value.toDouble())
+                is Set<*> -> JSONObject().put("ss", JSONArray(value.map { it.toString() }))
+                else -> continue
+            }
+            out.put(key.name, typed)
+        }
+        return out
+    }
+
+    /** Replaces every setting with the ones in [json] (as written by [export]). */
+    suspend fun import(json: JSONObject) {
+        ctx.store.edit { p ->
+            p.clear()
+            for (name in json.keys()) {
+                val v = json.optJSONObject(name) ?: continue
+                when {
+                    v.has("s") -> p[stringPreferencesKey(name)] = v.getString("s")
+                    v.has("b") -> p[booleanPreferencesKey(name)] = v.getBoolean("b")
+                    v.has("i") -> p[intPreferencesKey(name)] = v.getInt("i")
+                    v.has("l") -> p[longPreferencesKey(name)] = v.getLong("l")
+                    v.has("d") -> p[doublePreferencesKey(name)] = v.getDouble("d")
+                    v.has("f") -> p[floatPreferencesKey(name)] = v.getDouble("f").toFloat()
+                    v.has("ss") -> {
+                        val a = v.getJSONArray("ss")
+                        p[stringSetPreferencesKey(name)] = (0 until a.length()).mapTo(HashSet()) { a.getString(it) }
+                    }
+                }
+            }
         }
     }
 

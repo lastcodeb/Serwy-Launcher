@@ -186,6 +186,8 @@ fun GlassHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<H
                 onOpenControl = actions.onOpenControl,
                 onOpenNet = actions.onOpenNet,
                 onOpenMatch = actions.onOpenMatch,
+                onOpenSearch = actions.onOpenSearch,
+                onOpenMedia = actions.onOpenMedia,
             )
         }
         Shelf(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, actions)

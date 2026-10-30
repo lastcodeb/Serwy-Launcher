@@ -99,6 +99,18 @@
                 android:resource="@xml/remote_keys" />
         </service>
 
+        <!-- Only so the launcher may follow other apps' media sessions (now playing, play/pause);
+             it reads no notifications. Allowed with cmd notification allow_listener. -->
+        <service
+            android:name=".data.MediaListener"
+            android:exported="true"
+            android:label="Neon müzik kontrolü"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <!-- Galatasaray match day: alarm-driven score polling and light effects -->
         <receiver
             android:name=".MatchReceiver"

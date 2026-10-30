@@ -52,6 +52,8 @@ fun ControlCenter(
     onOpenWrapped: () -> Unit,
     onOpenMatch: () -> Unit,
     onOpenTheme: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenMedia: () -> Unit,
 ) {
     val st = LocalHomeStyle.current
     val hidden by vm.hiddenApps.collectAsStateWithLifecycle()
@@ -67,6 +69,7 @@ fun ControlCenter(
     val wiz by vm.wiz.collectAsStateWithLifecycle()
     val favorites by vm.favorites.collectAsStateWithLifecycle()
     val sleepAt by vm.sleepAt.collectAsStateWithLifecycle()
+    val np by vm.nowPlaying.collectAsStateWithLifecycle()
     val first = remember { FocusRequester() }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -148,7 +151,7 @@ fun ControlCenter(
                     Chip(t("Android TV ayarları"), onClick = { onDismiss(); vm.openSystemSettings() }, leading = "⚙️")
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Chip(t("Gizli uygulamalar ({0}) · Şehir", hidden.size), onClick = onOpenMenu, leading = "👁")
+                    Chip(t("Gizli uygulamalar ({0}) · Şehir · Yedek", hidden.size), onClick = onOpenMenu, leading = "👁")
                     Chip(t("Tema"), onClick = onOpenTheme, leading = "🎨")
                 }
 
@@ -168,6 +171,14 @@ fun ControlCenter(
                         },
                     )
                     Chip(t("Maç günü"), onClick = onOpenMatch, leading = "⚽")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Chip(t("Ara"), onClick = onOpenSearch, leading = "🔍")
+                    Chip(
+                        nowPlayingLabel(np)?.let { if (st.modern) it else t("Çalıyor") } ?: t("Müzik"),
+                        onClick = onOpenMedia,
+                        leading = "♪",
+                    )
                 }
             }
         }

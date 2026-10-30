@@ -45,6 +45,10 @@ class HomeActions(
     val onContentMenu: (WatchItem) -> Unit,
     /** Long-press on a Favoriler card (app or content): its menu, where "Taşı" moves it along the Favoriler row. */
     val onFavoriteMenu: (FavoriteCard) -> Unit,
+    /** Search: apps, and YouTube / Spotify / Google TV. */
+    val onOpenSearch: () -> Unit,
+    /** What another app is playing, with play/pause. */
+    val onOpenMedia: () -> Unit,
 )
 
 /** One-shot messages from LauncherScreen to the active home (see [HomeActions]); collect them in a LaunchedEffect. */

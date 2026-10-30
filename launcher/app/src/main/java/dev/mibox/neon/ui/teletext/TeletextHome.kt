@@ -259,6 +259,12 @@ private fun TtHintRow(ctx: TtCtx, page: Int) {
             TtText(t("Yukarı/aşağı: seç"), TtCyan)
             Spacer(Modifier.width(24.dp))
             TtText(t("OK: aç"), TtCyan, Modifier.weight(1f))
+            TtFocusable(onClick = ctx.actions.onOpenSearch, modifier = Modifier.height(TtRowH)) { f ->
+                Row(Modifier.fillMaxHeight().padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TtText(t("Ara"), tc(f, TtYellow))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
             // The gear: Android TV settings, long press = the launcher menu
             TtFocusable(
                 onClick = { ctx.vm.openSystemSettings() },

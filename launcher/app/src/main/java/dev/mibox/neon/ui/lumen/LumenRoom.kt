@@ -1,6 +1,8 @@
 package dev.mibox.neon.ui.lumen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +72,8 @@ fun LumenRoom(
     onOpenWrapped: () -> Unit,
     onOpenMatch: () -> Unit,
     onOpenTheme: () -> Unit,
+    onOpenSearch: () -> Unit,
+    onOpenMedia: () -> Unit,
 ) {
     val wizIp by vm.wizIp.collectAsStateWithLifecycle()
     val wiz by vm.wiz.collectAsStateWithLifecycle()
@@ -93,6 +97,7 @@ fun LumenRoom(
                     .clip(RoundedCornerShape(18.dp))
                     .background(L.Surface)
                     .border(1.dp, L.Hairline, RoundedCornerShape(18.dp))
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -193,7 +198,11 @@ fun LumenRoom(
                     Chip("Wrapped", onClick = onOpenWrapped)
                     Chip(t("Ayarlar"), onClick = { onDismiss(); vm.openSystemSettings() })
                 }
-                Chip(t("Gizli uygulamalar · Şehir"), onClick = onOpenMenu)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Chip(t("Ara"), onClick = onOpenSearch)
+                    Chip(t("Müzik"), onClick = onOpenMedia)
+                }
+                Chip(t("Gizli uygulamalar · Şehir · Yedek"), onClick = onOpenMenu)
             }
         }
       }

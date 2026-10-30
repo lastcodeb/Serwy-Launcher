@@ -137,6 +137,8 @@ fun NeonHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
                 onOpenControl = actions.onOpenControl,
                 onOpenNet = actions.onOpenNet,
                 onOpenMatch = actions.onOpenMatch,
+                onOpenSearch = actions.onOpenSearch,
+                onOpenMedia = actions.onOpenMedia,
             )
         }
         RowsArea(

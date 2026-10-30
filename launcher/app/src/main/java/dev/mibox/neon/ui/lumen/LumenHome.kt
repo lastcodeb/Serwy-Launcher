@@ -41,6 +41,7 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,6 +103,7 @@ import dev.mibox.neon.ui.LumenPalette
 import dev.mibox.neon.ui.LumenSans
 import dev.mibox.neon.ui.MatchChip
 import dev.mibox.neon.ui.NeonSurface
+import dev.mibox.neon.ui.nowPlayingLabel
 import dev.mibox.neon.ui.ROW_APPS
 import dev.mibox.neon.ui.ROW_FAVORITES
 import dev.mibox.neon.ui.ROW_FOR_YOU
@@ -238,6 +240,7 @@ private fun LumenTopBar(vm: LauncherViewModel, actions: HomeActions) {
     val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
     val ram by vm.ram.collectAsStateWithLifecycle()
     val freed by vm.freed.collectAsStateWithLifecycle()
+    val playing by vm.nowPlaying.collectAsStateWithLifecycle()
     val nowMs = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val dim = TextStyle(fontFamily = LumenSans, fontSize = 11.sp, fontWeight = FontWeight.Medium)
 
@@ -247,16 +250,28 @@ private fun LumenTopBar(vm: LauncherViewModel, actions: HomeActions) {
         Box(Modifier.width(1.dp).height(14.dp).background(Color.White.copy(alpha = 0.14f)))
         Spacer(Modifier.width(14.dp))
         val day = now.dayOfWeek.getDisplayName(JTextStyle.FULL, TR)
-        Text("${greeting(now.hour)} · $day ${now.format(DayFmt)}", style = dim.copy(color = L.Dim), maxLines = 1)
+        // Gives way first when the bar gets crowded (match, music)
+        Text(
+            "${greeting(now.hour)} · $day ${now.format(DayFmt)}",
+            modifier = Modifier.weight(1f, fill = false),
+            style = dim.copy(color = L.Dim),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         Spacer(Modifier.width(14.dp))
         if (matchOn || match != null) MatchChip(match, nowMs, actions.onOpenMatch)
         Spacer(Modifier.weight(1f))
 
         // Each status is a quiet text button: plain at rest, a white pill on focus
+        nowPlayingLabel(playing, max = 18)?.let { label ->
+            BarButton(onClick = actions.onOpenMedia, onLongClick = vm::mediaToggle) {
+                Text("♪  $label", style = dim.copy(color = if (playing?.playing == true) L.Amber else L.Dim), maxLines = 1)
+            }
+        }
         val w = weather
         BarButton(onClick = actions.onOpenControl) {
             Text(
-                if (w != null) "${w.tempC.roundToInt()}° ${city.name}" else city.name,
+                if (w != null) "${w.tempC.roundToInt()}°" + (if (playing != null) "" else " ${city.name}") else city.name,
                 style = dim, maxLines = 1,
             )
         }
@@ -294,6 +309,10 @@ private fun LumenTopBar(vm: LauncherViewModel, actions: HomeActions) {
         }
         BarButton(onClick = actions.onOpenControl) {
             Text(now.format(ClockFmt), style = TextStyle(fontFamily = LumenDisplay, fontSize = 17.sp, fontWeight = FontWeight.SemiBold), maxLines = 1)
+        }
+        Spacer(Modifier.width(6.dp))
+        NeonSurface(onClick = actions.onOpenSearch, modifier = Modifier.size(30.dp), shape = CircleShape) {
+            Icon(Icons.Default.Search, contentDescription = t("Ara"), modifier = Modifier.size(16.dp).align(Alignment.Center))
         }
         Spacer(Modifier.width(6.dp))
         NeonSurface(

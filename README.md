@@ -141,6 +141,28 @@ process, then reports how many it closed. The first time, the TV asks *Allow USB
 the launcher's key: tick *Always allow*. The key stays in the app's private files. Without that
 approval only the cached processes are dropped, as before.
 
+### Now playing
+When Spotify, YouTube Music or anything else with a media session plays (or holds a paused
+track), every top bar shows a *♪ title · artist* item: OK opens a panel with the cover,
+previous / play-pause / next and *Uygulamayı aç*; long-press OK pauses or resumes straight away.
+The Control Center (and Lumen's and Aura's room panel) has a *Müzik* entry too. It needs a
+notification listener (`MediaListener`, which reads no notifications) allowed once:
+`install.ps1` does it, or the panel's *İzin ver* button does it through the box's own ADB.
+
+### Search
+The magnifier in the top bar (Neon, Cam, Lumen, Aura), *Ara* on Teletext's page 100 and in the
+Control Center open one search box. Type, or use the keyboard's microphone: matching apps
+(hidden ones too) appear first, then *YouTube*, *YouTube Music*, *Spotify* and *Google TV* to
+send the words to; *Sesle ara* opens Google's voice search, like the remote's microphone key.
+
+### Backup
+Launcher menu (long-press the gear) → *Yedek ve geri yükleme*. *Şimdi yedekle* writes every
+setting (favorites and pinned episodes, order, hidden apps, theme, city, light presets and
+profiles, match day) to `Download/Serwy/neon-yedek.json`; after the first save it updates
+itself 30 s after any setting changes. The file stays when the launcher is uninstalled; a new
+install restores it with *Yedekten geri yükle* (through the box's own ADB, since the file then
+belongs to the old install). Pinned posters and the Wrapped history are not in it.
+
 ### Debloat
 `debloat.sh` disables (never uninstalls) Xiaomi analytics, ad and recommendation packages and
 other unused system apps, lowers animation scales, and swaps the Google TV launcher out.
@@ -155,16 +177,18 @@ APK. With ADB connected to the box (see [step 1](#1-enable-adb-on-the-box) and
 [step 3](#3-connect)):
 
 ```powershell
-adb install -r Serwy-Launcher-1.1.0.apk
+adb install -r Serwy-Launcher-1.1.1.apk
 adb shell appops set dev.mibox.neon GET_USAGE_STATS allow
 adb shell pm grant dev.mibox.neon android.permission.READ_TV_LISTINGS
 adb shell cmd package set-home-activity dev.mibox.neon/.MainActivity
 adb shell settings put secure enabled_accessibility_services dev.mibox.neon/dev.mibox.neon.RemoteKeys
 adb shell settings put secure accessibility_enabled 1
+adb shell cmd notification allow_listener dev.mibox.neon/dev.mibox.neon.data.MediaListener
 ```
 
-The last two lines turn on the remote's app buttons ([Remote app buttons](#remote-app-buttons));
-run them again after every update, since reinstalling unbinds the service.
+The two `accessibility` lines turn on the remote's app buttons ([Remote app buttons](#remote-app-buttons));
+run them again after every update, since reinstalling unbinds the service. The last line lets
+the top bar show and control what is playing ([Now playing](#now-playing)).
 
 The same APK is published as a Maven package in this repository's
 [GitHub Packages](https://github.com/lastcodeb/Serwy-Launcher/packages)
@@ -438,7 +462,9 @@ $b = [Text.Encoding]::ASCII.GetBytes('{"method":"getPilot","params":{}}')
 | Control center → *Neon Wrapped* | OK | Monthly story: ◀ ▶ pages, ▲ ▼ month, Back closes |
 | Light chip | OK / long-press | Light panel / toggle the first quick preset (Party) |
 | RAM chip | OK | Close every running app (see [Closing apps for real](#closing-apps-for-real)), shows how many and how much memory was freed |
-| Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city, theme) |
+| ♪ chip (while music plays) | OK / long-press | Now-playing panel / play-pause |
+| Magnifier | OK | Search: apps, YouTube, YouTube Music, Spotify, Google TV, voice |
+| Gear | OK / long-press | Android TV settings / launcher menu (hidden apps, city, theme, backup) |
 | Control center → *Tema* | OK | Theme picker: Neon, Cam (Glass), Gazete, Teletext, Lumen, Aura |
 | Home | – | Back to the top row, first card |
 
@@ -460,7 +486,8 @@ uygulamalar* → select the app.
 | `INTERNET` | Weather, speed test, screensaver footage | Install time |
 | `KILL_BACKGROUND_PROCESSES` | "Boşalt" button, fallback without ADB approval | Install time |
 | Accessibility service `RemoteKeys` | The remote's app buttons (key filtering only) | `settings put secure enabled_accessibility_services` in `install.ps1` |
-| ADB key (TV prompt) | "Boşalt" force-stops running apps through the box's own adbd | *Always allow* on the TV, once |
+| ADB key (TV prompt) | "Boşalt" force-stops running apps through the box's own adbd; restoring a backup left by an earlier install | *Always allow* on the TV, once |
+| Notification listener `MediaListener` | Reading and controlling other apps' media sessions (now playing); no notification is read | `cmd notification allow_listener` in `install.ps1` |
 | `QUERY_ALL_PACKAGES` | A launcher must list every app | Install time |
 | `READ_EPG_DATA` | TV provider (Watch Next, channels) | Install time |
 | `READ_TV_LISTINGS` | Lets the TV provider return other apps' Watch Next and channel rows | `pm grant` in `install.ps1` |

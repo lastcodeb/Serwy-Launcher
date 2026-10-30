@@ -32,35 +32,43 @@ class LocalAdb(private val ctx: Context) {
      * [Result.NotAllowed] when the connection is refused or not approved within [timeoutMs].
      */
     suspend fun forceStopRunning(candidates: Set<String>, keep: Set<String>, timeoutMs: Long = 30_000): Result =
-        withContext(Dispatchers.IO) {
-            val adb = runCatching { Dadb.create(HOST, PORT, keyPair()) }.getOrElse {
-                Log.w(TAG, "adb connect failed", it)
-                return@withContext Result.NotAllowed
+        session(timeoutMs) { adb ->
+            val running = adb.shell("ps -A -o NAME").output.lineSequence()
+                .map { it.trim().substringBefore(':') }
+                .filter { it.isNotEmpty() }
+                .toSet()
+            val targets = candidates.filter { it in running && it !in keep }
+            for (pkg in targets) adb.shell("am force-stop $pkg")
+            Log.i(TAG, "force-stopped $targets")
+            Result.Done(targets)
+        } ?: Result.NotAllowed
+
+    /** Runs [cmd] in the shell and returns its output; null when adbd did not let us in. */
+    suspend fun shell(cmd: String, timeoutMs: Long = 30_000): String? = session(timeoutMs) { it.shell(cmd).output }
+
+    /** Connects, runs [block] and closes; null when the connection is refused or not approved in time. */
+    private suspend fun <T : Any> session(timeoutMs: Long, block: (Dadb) -> T): T? = withContext(Dispatchers.IO) {
+        val adb = runCatching { Dadb.create(HOST, PORT, keyPair()) }.getOrElse {
+            Log.w(TAG, "adb connect failed", it)
+            return@withContext null
+        }
+        coroutineScope {
+            // A pending approval blocks the first read; closing the socket ends the wait
+            val watchdog = async {
+                delay(timeoutMs)
+                runCatching { adb.close() }
             }
-            coroutineScope {
-                // A pending approval blocks the first read; closing the socket ends the wait
-                val watchdog = async {
-                    delay(timeoutMs)
-                    runCatching { adb.close() }
-                }
-                try {
-                    val running = adb.shell("ps -A -o NAME").output.lineSequence()
-                        .map { it.trim().substringBefore(':') }
-                        .filter { it.isNotEmpty() }
-                        .toSet()
-                    val targets = candidates.filter { it in running && it !in keep }
-                    for (pkg in targets) adb.shell("am force-stop $pkg")
-                    Log.i(TAG, "force-stopped $targets")
-                    Result.Done(targets)
-                } catch (e: Exception) {
-                    Log.w(TAG, "adb shell failed", e)
-                    Result.NotAllowed
-                } finally {
-                    watchdog.cancel()
-                    runCatching { adb.close() }
-                }
+            try {
+                block(adb)
+            } catch (e: Exception) {
+                Log.w(TAG, "adb shell failed", e)
+                null
+            } finally {
+                watchdog.cancel()
+                runCatching { adb.close() }
             }
         }
+    }
 
     private fun keyPair(): AdbKeyPair {
         val dir = File(ctx.filesDir, "adb").apply { mkdirs() }

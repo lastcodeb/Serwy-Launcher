@@ -58,6 +58,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
     var showMatch by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
     var showAllApps by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
+    var showMedia by remember { mutableStateOf(false) }
 
     // Messages to whichever home is on screen (focus restore, items that vanished)
     val signals = remember { MutableSharedFlow<HomeSignal>(extraBufferCapacity = 8) }
@@ -85,6 +87,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
                     is FavoriteCard.Content -> contentMenuFor = card.item
                 }
             },
+            onOpenSearch = { showSearch = true },
+            onOpenMedia = { showMedia = true },
         )
     }
 
@@ -101,7 +105,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
         }
     }
     LaunchedEffect(Unit) {
-        vm.boostMessage.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+        vm.notice.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
     }
     LaunchedEffect(Unit) {
         vm.netWarning.collect { w ->
@@ -139,6 +143,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
             showMatch = false
             showTheme = false
             showAllApps = false
+            showSearch = false
+            showMedia = false
         }
     }
     // The remote's Apps key: after the Home reset above, so it is not closed again at once
@@ -152,7 +158,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
 
     // When the last overlay closes, tell the home to take focus back if it lost it
     val overlayOpen = menuFor != null || contentMenuFor != null || showMenu || showLight || showControl ||
-        showNet || showWrapped || showMatch || showTheme || showAllApps
+        showNet || showWrapped || showMatch || showTheme || showAllApps || showSearch || showMedia
     var hadOverlay by remember { mutableStateOf(false) }
     LaunchedEffect(overlayOpen) {
         if (overlayOpen) {
@@ -259,6 +265,14 @@ fun LauncherScreen(vm: LauncherViewModel) {
                         showControl = false
                         showTheme = true
                     },
+                    onOpenSearch = {
+                        showControl = false
+                        showSearch = true
+                    },
+                    onOpenMedia = {
+                        showControl = false
+                        showMedia = true
+                    },
                 )
             } else if (showControl) {
                 ControlCenter(
@@ -288,6 +302,14 @@ fun LauncherScreen(vm: LauncherViewModel) {
                         showControl = false
                         showTheme = true
                     },
+                    onOpenSearch = {
+                        showControl = false
+                        showSearch = true
+                    },
+                    onOpenMedia = {
+                        showControl = false
+                        showMedia = true
+                    },
                 )
             }
             if (showNet) NetPanel(vm, onDismiss = { showNet = false })
@@ -295,6 +317,8 @@ fun LauncherScreen(vm: LauncherViewModel) {
             if (showMatch) MatchPanel(vm, onDismiss = { showMatch = false })
             if (showTheme) ThemePicker(vm, onDismiss = { showTheme = false })
             if (showAllApps) LumenApps(vm, actions.onAppMenu) { showAllApps = false }
+            if (showSearch) SearchPanel(vm, onDismiss = { showSearch = false })
+            if (showMedia) MediaPanel(vm, onDismiss = { showMedia = false })
         }
     }
 }

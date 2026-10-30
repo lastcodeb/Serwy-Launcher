@@ -179,7 +179,9 @@ fun ContentMenu(item: WatchItem, vm: LauncherViewModel, onDismiss: () -> Unit, o
     FocusOnOpen(first)
 }
 
-private enum class MenuPage { Main, Hidden, City }
+private enum class MenuPage { Main, Hidden, City, Backup }
+
+private val BackupTime = java.time.format.DateTimeFormatter.ofPattern("d MMM HH:mm", TR)
 
 @Composable
 fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -> Unit) {
@@ -187,6 +189,7 @@ fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -
     var page by remember { mutableStateOf(MenuPage.Main) }
     val hidden by vm.hiddenApps.collectAsStateWithLifecycle()
     val city by vm.city.collectAsStateWithLifecycle()
+    val backupAt by vm.backupAt.collectAsStateWithLifecycle()
     val first = remember(page) { FocusRequester() }
 
     NeonDialog(onDismiss) {
@@ -200,6 +203,7 @@ fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -
                 MenuItem(t("👁   Gizli uygulamalar ({0})", hidden.size), { page = MenuPage.Hidden }, Modifier.focusRequester(first))
                 MenuItem(t("📍   Şehir: {0}", city.name), { page = MenuPage.City })
                 MenuItem(t("🎨   Tema"), onOpenTheme)
+                MenuItem(t("💾   Yedek ve geri yükleme"), { page = MenuPage.Backup })
                 MenuItem(t("⚙️   Android TV ayarları"), { onDismiss(); vm.openSystemSettings() })
                 MenuItem(t("✕   Kapat"), onDismiss)
             }
@@ -221,6 +225,18 @@ fun LauncherMenu(vm: LauncherViewModel, onDismiss: () -> Unit, onOpenTheme: () -
                 MenuItem(t("←   Geri"), { page = MenuPage.Main }, if (hidden.isEmpty()) Modifier.focusRequester(first) else Modifier)
             }
             MenuPage.City -> CityEditor(vm, first, onDone = { page = MenuPage.Main })
+            MenuPage.Backup -> {
+                Text(t("Yedek"), style = st.headline)
+                Text(
+                    backupAt?.let { t("Son yedek: {0}. Ayar değiştikçe kendiliğinden güncellenir.", BackupTime.format(java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()))) }
+                        ?: t("Favoriler, sıralama, gizli uygulamalar, tema, şehir ve ışık ayarları İndirilenler/Serwy klasörüne yazılır; launcher silinse de kalır."),
+                    style = st.body,
+                    color = st.textDim,
+                )
+                MenuItem(t("💾   Şimdi yedekle"), vm::saveBackup, Modifier.focusRequester(first))
+                MenuItem(t("↺   Yedekten geri yükle"), { vm.restoreBackup(); onDismiss() })
+                MenuItem(t("←   Geri"), { page = MenuPage.Main })
+            }
         }
     }
     FocusOnOpen(first)

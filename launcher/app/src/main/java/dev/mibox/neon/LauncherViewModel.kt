@@ -18,6 +18,8 @@ import dev.mibox.neon.data.LocalAdb
 import dev.mibox.neon.data.AppArt
 import dev.mibox.neon.data.AppEntry
 import dev.mibox.neon.data.AppRepository
+import dev.mibox.neon.data.AppSearch
+import dev.mibox.neon.data.Backup
 import dev.mibox.neon.data.City
 import dev.mibox.neon.data.DefaultCity
 import dev.mibox.neon.data.FavoriteCard
@@ -45,6 +47,9 @@ import dev.mibox.neon.data.MatchStore
 import dev.mibox.neon.data.NetHealth
 import dev.mibox.neon.data.NetNow
 import dev.mibox.neon.data.NetWarning
+import dev.mibox.neon.data.NowPlaying
+import dev.mibox.neon.data.NowPlayingWatcher
+import dev.mibox.neon.data.SearchTarget
 import dev.mibox.neon.data.PinResult
 import dev.mibox.neon.data.Prefs
 import dev.mibox.neon.data.Ram
@@ -189,6 +194,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
 
     val favorites: StateFlow<List<String>> = prefs.favorites.stateIn(viewModelScope, SharingStarted.Eagerly, Wiz.DefaultFavorites)
     val profiles: StateFlow<Map<String, String>> = prefs.profiles.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
+
+    private val localAdb = LocalAdb(app)
+    private val backup = Backup(app, prefs, localAdb)
+    private val _notice = MutableSharedFlow<String>(extraBufferCapacity = 2)
+    private val _backupAt = MutableStateFlow<Long?>(null)
+    /** When this install last saved the backup file; null before the first save (or restore). */
+    val backupAt: StateFlow<Long?> = _backupAt.asStateFlow()
+
 
     // Declared before init: reloadApps() there can reach these from a background thread
     private val recentPkgs = MutableStateFlow<List<String>>(emptyList())
@@ -753,6 +766,14 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             wizIp.filterNotNull().collect { if (resumed) wizEnterHome() }
         }
+        // Once this install has a backup, keep it current: a setting changed, a quiet half minute, saved
+        viewModelScope.launch(Dispatchers.IO) {
+            _backupAt.value = backup.ownSavedAt()
+            prefs.changes.drop(1).collectLatest {
+                delay(BACKUP_QUIET_MS)
+                if (_backupAt.value != null) backup.save()?.let { at -> _backupAt.value = at }
+            }
+        }
         // Ambient: follow the focused app's color, debounced so fast D-pad scrolling sends one packet
         viewModelScope.launch(Dispatchers.IO) {
             accent.filterNotNull().distinctUntilChanged().collectLatest { c ->
@@ -766,6 +787,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        media.stop()
         MatchBridge.sink = null
         getApplication<Application>().unregisterReceiver(packageReceiver)
     }
@@ -829,6 +851,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         refreshMatch()
         refreshSun()
         MatchBridge.sink = ::playMatchEffect
+        _mediaAccess.value = media.hasAccess()
+        media.start()
         startTicker()
     }
 
@@ -837,6 +861,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         tickJob?.cancel()
         probeJob?.cancel()
         MatchBridge.sink = null
+        media.stop()
         wizLeaveHome()
     }
 
@@ -1031,14 +1056,95 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         _sleepAt.value = at
     }
 
+    // --- Now playing ------------------------------------------------------------------------------
+    private val _nowPlaying = MutableStateFlow<NowPlaying?>(null)
+    /** What another app plays (Spotify in the background…); followed only while home is visible. */
+    val nowPlaying: StateFlow<NowPlaying?> = _nowPlaying.asStateFlow()
+
+    private val media = NowPlayingWatcher(app) { _nowPlaying.value = it }
+
+    private val _mediaAccess = MutableStateFlow(media.hasAccess())
+    /** False until the media listener is allowed; [enableMedia] allows it through the box's adb. */
+    val mediaAccess: StateFlow<Boolean> = _mediaAccess.asStateFlow()
+
+    fun mediaToggle() = media.toggle()
+    fun mediaNext() = media.next()
+    fun mediaPrevious() = media.previous()
+
+    /** Brings the playing app to the front. */
+    fun openNowPlaying() {
+        val pkg = _nowPlaying.value?.pkg ?: return
+        appFor(pkg)?.let(::launch)
+    }
+
+    fun enableMedia() {
+        viewModelScope.launch {
+            if (localAdb.shell("cmd notification allow_listener $MEDIA_LISTENER") == null) {
+                _notice.tryEmit(t("Müzik kontrolü için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene"))
+                return@launch
+            }
+            delay(300)
+            _mediaAccess.value = media.hasAccess()
+            if (resumed) media.start()
+        }
+    }
+
+    // --- Search -----------------------------------------------------------------------------------
+    /** Installed apps (hidden ones too) whose name matches [query]. */
+    fun searchApps(query: String): List<AppEntry> = AppSearch.apps(installed.value.orEmpty(), query)
+
+    /** The search targets installed (and enabled) on this box. */
+    fun searchTargets(): List<SearchTarget> = SearchTarget.entries.filter { isInstalled(it.pkg) }
+
+    fun searchIn(target: SearchTarget, query: String) {
+        if (query.isBlank()) return
+        prepareLaunch(target.pkg, appFor(target.pkg))
+        startOr(target.intent(query)) { appFor(target.pkg)?.let(repo::launch) }
+    }
+
+    fun voiceSearch() = startOr(AppSearch.voiceIntent()) {}
+
+    private fun startOr(intent: Intent, fallback: () -> Unit) {
+        runCatching { getApplication<Application>().startActivity(intent) }
+            .onFailure {
+                Log.w(TAG, "can't start $intent", it)
+                fallback()
+            }
+    }
+
+    private fun isInstalled(pkg: String): Boolean =
+        runCatching { getApplication<Application>().packageManager.getApplicationInfo(pkg, 0).enabled }.getOrDefault(false)
+
+    // --- Backup -----------------------------------------------------------------------------------
+    fun saveBackup() {
+        viewModelScope.launch {
+            val at = backup.save()
+            if (at != null) _backupAt.value = at
+            _notice.tryEmit(if (at != null) t("Ayarlar yedeklendi: İndirilenler/Serwy") else t("Yedek yazılamadı"))
+        }
+    }
+
+    fun restoreBackup() {
+        viewModelScope.launch {
+            val r = backup.restore()
+            _notice.tryEmit(
+                when (r) {
+                    is Backup.Restore.Done -> t("Ayarlar geri yüklendi")
+                    Backup.Restore.NoBackup -> t("Yedek bulunamadı")
+                    Backup.Restore.Broken -> t("Yedek dosyası okunamadı")
+                    Backup.Restore.NotAllowed -> t("Yedeği okumak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene")
+                },
+            )
+            if (r is Backup.Restore.Done) _backupAt.value = backup.ownSavedAt()
+        }
+    }
+
     fun refreshRam() {
         _ram.value = stats.ram()
     }
 
-    private val localAdb = LocalAdb(app)
-    private val _boostMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    /** What the clean-up did, for a toast: how many apps were closed, or that the TV must approve first. */
-    val boostMessage: SharedFlow<String> = _boostMessage
+    /** One-line results for a toast: what the clean-up closed, a backup saved, an approval needed… */
+    val notice: SharedFlow<String> = _notice
 
     fun boost() {
         if (boostJob?.isActive == true) return
@@ -1048,10 +1154,10 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
             // without adb approval only the cached processes below can go
             val launchable = installed.value.orEmpty().mapTo(HashSet()) { it.pkg }
             when (val r = localAdb.forceStopRunning(launchable, keep = setOf(getApplication<Application>().packageName))) {
-                is LocalAdb.Result.Done -> _boostMessage.tryEmit(
+                is LocalAdb.Result.Done -> _notice.tryEmit(
                     if (r.stopped.isEmpty()) t("Açık uygulama yoktu") else t("{0} uygulama kapatıldı", r.stopped.size),
                 )
-                LocalAdb.Result.NotAllowed -> _boostMessage.tryEmit(t("Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene"))
+                LocalAdb.Result.NotAllowed -> _notice.tryEmit(t("Uygulamaları kapatmak için TV'deki hata ayıklama izni sorusuna \"Her zaman izin ver\" de, sonra tekrar dene"))
             }
             withContext(Dispatchers.IO) {
                 stats.killBackground()
@@ -1273,6 +1379,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         const val FLASH_MS = 900L
         const val SHOWCASE_SIZE = 5
         const val TAG = "Neon"
+        const val BACKUP_QUIET_MS = 30_000L
+        const val MEDIA_LISTENER = "dev.mibox.neon/dev.mibox.neon.data.MediaListener"
         val SLEEP_STEPS = listOf(15, 30, 60, 90)
     }
 }

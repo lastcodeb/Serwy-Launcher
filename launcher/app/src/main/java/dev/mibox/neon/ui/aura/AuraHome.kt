@@ -38,6 +38,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +110,7 @@ import dev.mibox.neon.ui.LumenDisplay
 import dev.mibox.neon.ui.LumenSans
 import dev.mibox.neon.ui.MatchChip
 import dev.mibox.neon.ui.NeonSurface
+import dev.mibox.neon.ui.nowPlayingLabel
 import dev.mibox.neon.ui.Pill
 import dev.mibox.neon.ui.ROW_APPS
 import dev.mibox.neon.ui.ROW_FAVORITES
@@ -281,6 +283,7 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
     val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
     val ram by vm.ram.collectAsStateWithLifecycle()
     val freed by vm.freed.collectAsStateWithLifecycle()
+    val playing by vm.nowPlaying.collectAsStateWithLifecycle()
     val nowMs = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val small = TextStyle(fontFamily = LumenSans, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     val dot = animateColorAsState(aura.color, tween(600), label = "auraDot")
@@ -320,9 +323,21 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
                 .padding(3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            nowPlayingLabel(playing, max = 18)?.let { label ->
+                Segment(onClick = actions.onOpenMedia, onLongClick = vm::mediaToggle) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Glows in the aura while the music plays
+                        Text("♪", style = small.copy(color = if (playing?.playing == true) dot.value else A.Dim))
+                        Spacer(Modifier.width(6.dp))
+                        Text(label, style = small, maxLines = 1)
+                    }
+                }
+            }
             val w = weather
             Segment(onClick = actions.onOpenControl) {
-                Text(if (w != null) "${w.tempC.roundToInt()}° ${city.name}" else city.name, style = small, maxLines = 1)
+                // While music shows, the city makes room for it
+                val place = if (playing != null) "" else " ${city.name}"
+                Text(if (w != null) "${w.tempC.roundToInt()}°$place" else city.name, style = small, maxLines = 1)
             }
             val p = wiz
             Segment(onClick = actions.onOpenLight, onLongClick = if (wizIp != null) ({ vm.wizQuick() }) else null) {
@@ -362,6 +377,9 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
                     style = small,
                     maxLines = 1,
                 )
+            }
+            Segment(onClick = actions.onOpenSearch) {
+                Icon(Icons.Default.Search, contentDescription = t("Ara"), modifier = Modifier.size(15.dp))
             }
             Segment(onClick = actions.onOpenControl) {
                 Text(now.format(ClockFmt), style = TextStyle(fontFamily = LumenDisplay, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold), maxLines = 1)
