@@ -98,10 +98,12 @@ Local UDP control (port 38899), no cloud, discovered automatically.
 - The **match panel**: a scoreboard with large crests, *Maçı aç* (opens the match in the app you
   watch it in, e.g. beIN Connect), settings and a preview of every state.
 - **WiZ light effects** in the club's red and yellow: at kickoff, on every Galatasaray goal and
-  after a win. A **stream delay** (0–90 s) holds the effects back so the light never spoils a
+  after a win. A goal starts with a blackout and three white flashes, so it stands out even
+  over a colorful scene like *Party*. A **stream delay** (0–90 s) holds the effects back so the light never spoils a
   goal before the picture shows it.
-- Fixtures and live scores come from ESPN's public API (Süper Lig, Champions League, Europa
-  League, Conference League); crests are cached on the box.
+- Fixtures come from ESPN's public API (Süper Lig, Champions League, Europa League, Conference
+  League); the live score comes from Maçkolik, polled every 15 s during the match, so a goal
+  lights up within about half a minute (ESPN is the fallback). Crests are cached on the box.
 
 **Kick-off card**: a minute before kickoff a *Maç başlıyor* card appears over whatever is on
 screen (it is an overlay of the `RemoteKeys` accessibility service, so the app underneath keeps
@@ -183,7 +185,7 @@ APK. With ADB connected to the box (see [step 1](#1-enable-adb-on-the-box) and
 [step 3](#3-connect)):
 
 ```powershell
-adb install -r Serwy-Launcher-1.1.1.apk
+adb install -r Serwy-Launcher-1.1.2.apk
 adb shell appops set dev.mibox.neon GET_USAGE_STATS allow
 adb shell pm grant dev.mibox.neon android.permission.READ_TV_LISTINGS
 adb shell cmd package set-home-activity dev.mibox.neon/.MainActivity
