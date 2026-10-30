@@ -154,8 +154,7 @@ private val PosterH = 383.dp
  * Aura: Lumen's calm story and room sheet, Glass's frosted wash and lifting cards, Neon's color.
  * Whatever has focus lends its color to everything: the card glows in it, a light pools on the
  * floor under it and follows it along the row, the sky behind the story takes it, and so does
- * the lamp in the room. Rows sit behind tabs, the next one peeking from below. Left alone for a
- * minute the home turns into "Sahne", a slow cinema of what you watch with a big clock.
+ * the lamp in the room. Rows sit behind tabs, the next one peeking from below.
  */
 @Composable
 fun AuraHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<HomeSignal>) {
@@ -170,7 +169,6 @@ fun AuraHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
     val focus = remember { mutableStateOf<Focus?>(null) }
     val rows = remember { RowsController() }
     val aura = remember { AuraLight() }
-    val scene = remember { SceneState() }
     // Where focus is in its row, for the "3 / 12" next to the tabs
     val position = remember { mutableStateOf(0 to 0) }
     val firstRow = rowKeys(favorites, watch, forYou).first()
@@ -190,7 +188,6 @@ fun AuraHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
     }
     LaunchedEffect(Unit) {
         vm.homePressed.collect {
-            scene.on = false
             rows.scrollAllToStart()
             rows.focus(keysNow().first())
         }
@@ -222,67 +219,33 @@ fun AuraHome(vm: LauncherViewModel, actions: HomeActions, signals: SharedFlow<Ho
     var showApps by remember { mutableStateOf(false) }
     if (showApps) LumenApps(vm, actions.onAppMenu) { showApps = false }
 
-    SceneTimer(vm, scene, busy = moving != null || movingFavorite != null || showApps)
-    val sceneAlpha = animateFloatAsState(
-        if (scene.on) 1f else 0f,
-        tween(if (scene.on) 1400 else 280),
-        label = "scene",
-    )
-
     // One slow rise of the whole home when it appears
     val intro = remember { Animatable(0f) }
     LaunchedEffect(Unit) { intro.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) }
 
-    // While Sahne plays, the first key only ends it (OK opens what it shows); the rest of that
-    // press, its repeats and its release, never reach the card underneath
-    val swallowing = remember { BooleanArray(1) }
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(A.Ground)
-            .onPreviewKeyEvent { e ->
-                when {
-                    scene.on && e.type == KeyEventType.KeyDown -> {
-                        val ok = e.key == Key.DirectionCenter || e.key == Key.Enter || e.key == Key.NumPadEnter
-                        scene.on = false
-                        swallowing[0] = true
-                        if (ok) scene.open?.invoke()
-                        true
-                    }
-                    swallowing[0] -> {
-                        if (e.type == KeyEventType.KeyUp) swallowing[0] = false
-                        true
-                    }
-                    else -> false
-                }
-            },
-    ) {
-        // Under a finished Sahne nothing of the home is drawn: it would only cost the GPU
-        Box(Modifier.fillMaxSize().graphicsLayer { alpha = if (sceneAlpha.value > 0.99f) 0f else 1f }) {
-            Stage(vm, focus, aura)
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Side)
-                    .offset(y = 22.dp)
-                    .graphicsLayer {
-                        alpha = intro.value
-                        translationY = (1f - intro.value) * -14.dp.toPx()
-                    }
-                    .focusProperties { down = rows.requester(rows.activeKey ?: firstRow) },
-            ) {
-                AuraTopBar(vm, actions, aura)
-            }
-            Box(
-                Modifier.fillMaxSize().graphicsLayer {
+    Box(Modifier.fillMaxSize().background(A.Ground)) {
+        Stage(vm, focus, aura)
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = Side)
+                .offset(y = 22.dp)
+                .graphicsLayer {
                     alpha = intro.value
-                    translationY = (1f - intro.value) * 40.dp.toPx()
-                },
-            ) {
-                Rows(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, aura, position, actions, onOpenApps = { showApps = true })
-            }
+                    translationY = (1f - intro.value) * -14.dp.toPx()
+                }
+                .focusProperties { down = rows.requester(rows.activeKey ?: firstRow) },
+        ) {
+            AuraTopBar(vm, actions, aura)
         }
-        SceneHost(vm, scene, sceneAlpha, aura)
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                alpha = intro.value
+                translationY = (1f - intro.value) * 40.dp.toPx()
+            },
+        ) {
+            Rows(vm, apps, favorites, watch, forYou, moving, movingFavorite, rows, focus, aura, position, actions, onOpenApps = { showApps = true })
+        }
     }
 }
 
@@ -317,6 +280,7 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
     val match by vm.match.collectAsStateWithLifecycle()
     val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
     val ram by vm.ram.collectAsStateWithLifecycle()
+    val freed by vm.freed.collectAsStateWithLifecycle()
     val nowMs = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val small = TextStyle(fontFamily = LumenSans, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     val dot = animateColorAsState(aura.color, tween(600), label = "auraDot")
@@ -384,7 +348,8 @@ private fun AuraTopBar(vm: LauncherViewModel, actions: HomeActions, aura: AuraLi
             }
             // Memory in use; OK closes the apps running in the background
             Segment(onClick = vm::boost) {
-                Text(t("RAM %{0}", ram.usedPercent), style = small, maxLines = 1)
+                val f = freed
+                Text(if (f != null) "+${f / (1024 * 1024)} MB" else t("RAM %{0}", ram.usedPercent), style = small, maxLines = 1)
             }
             Segment(onClick = actions.onOpenNet) {
                 Text(

@@ -236,6 +236,8 @@ private fun LumenTopBar(vm: LauncherViewModel, actions: HomeActions) {
     val net by vm.netNow.collectAsStateWithLifecycle()
     val match by vm.match.collectAsStateWithLifecycle()
     val matchOn by vm.matchEnabled.collectAsStateWithLifecycle()
+    val ram by vm.ram.collectAsStateWithLifecycle()
+    val freed by vm.freed.collectAsStateWithLifecycle()
     val nowMs = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val dim = TextStyle(fontFamily = LumenSans, fontSize = 11.sp, fontWeight = FontWeight.Medium)
 
@@ -273,6 +275,11 @@ private fun LumenTopBar(vm: LauncherViewModel, actions: HomeActions) {
                     style = dim, maxLines = 1,
                 )
             }
+        }
+        // Memory in use; OK closes the running apps and says how much came back
+        BarButton(onClick = vm::boost) {
+            val f = freed
+            Text(if (f != null) "+${f / (1024 * 1024)} MB" else t("RAM %{0}", ram.usedPercent), style = dim, maxLines = 1)
         }
         BarButton(onClick = actions.onOpenNet) {
             Text(
