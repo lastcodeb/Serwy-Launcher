@@ -41,6 +41,11 @@ class MatchReceiver : BroadcastReceiver() {
             try {
                 when (intent.action) {
                     MatchAlarms.ACTION_POLL -> poll(app)
+                    // adb only (the receiver needs android.permission.DUMP): play an effect now
+                    MatchAlarms.ACTION_TEST_EFFECT -> {
+                        val kind = runCatching { MatchEffectKind.valueOf(intent.getStringExtra(MatchAlarms.EXTRA_KIND) ?: "GOAL") }.getOrNull()
+                        if (kind != null) effect(app, kind, force = true)
+                    }
                     MatchAlarms.ACTION_HEADS_UP -> headsUp(app, test = intent.getBooleanExtra(MatchAlarms.EXTRA_TEST, false))
                     MatchAlarms.ACTION_EFFECT -> {
                         val kind = runCatching { MatchEffectKind.valueOf(intent.getStringExtra(MatchAlarms.EXTRA_KIND).orEmpty()) }.getOrNull()
@@ -160,10 +165,19 @@ class MatchReceiver : BroadcastReceiver() {
             Log.i(TAG, "effect $kind: light before $before")
             // A light that is off stays off
             if (before == null || !before.on) return
+            var sent = 0
+            var ok = 0
             try {
-                runBlocking { MatchEffects.play(kind) { Wiz.set(ip, it) } }
+                runBlocking {
+                    MatchEffects.play(kind) {
+                        sent++
+                        if (Wiz.set(ip, it)) ok++ else Log.w(TAG, "effect $kind: $ip did not confirm $it")
+                        if (sent == 1) Log.i(TAG, "effect $kind: light now ${Wiz.pilot(ip)}")
+                    }
+                }
             } finally {
-                Wiz.set(ip, before.restoreParams())
+                val back = Wiz.set(ip, before.restoreParams())
+                Log.i(TAG, "effect $kind: $ok/$sent commands confirmed by $ip, restored=$back")
             }
         }
     }
@@ -184,6 +198,7 @@ object MatchAlarms {
     const val ACTION_POLL = "dev.mibox.neon.MATCH_POLL"
     const val ACTION_EFFECT = "dev.mibox.neon.MATCH_EFFECT"
     const val ACTION_HEADS_UP = "dev.mibox.neon.MATCH_HEADS_UP"
+    const val ACTION_TEST_EFFECT = "dev.mibox.neon.MATCH_TEST_EFFECT"
     const val EXTRA_KIND = "kind"
     const val EXTRA_TEST = "test"
     private const val CODE_POLL = 7001

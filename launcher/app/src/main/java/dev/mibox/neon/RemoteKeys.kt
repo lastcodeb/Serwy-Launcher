@@ -22,6 +22,9 @@ class RemoteKeys : AccessibilityService() {
     override fun onServiceConnected() {
         kickoff = KickoffAlert(this)
         instance = this
+        // An update or a force stop deletes the match alarms; the system binds this service again
+        // right away, so re-arm here instead of waiting for the home screen to show
+        Thread { runCatching { MatchAlarms.arm(this, dev.mibox.neon.data.MatchStore(this).fixtures()) } }.start()
     }
 
     override fun onDestroy() {
