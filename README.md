@@ -13,13 +13,16 @@ up from a Windows PC over Wi-Fi ADB. Nothing needs root.
 The UI follows the box's language: **Turkish** on a Turkish box, **English** everywhere else.
 Code, scripts and docs are in English.
 
-![Glass theme: continue watching](docs/screenshots/glass-continue-watching.jpg)
+![The six themes](docs/screenshots/showcase-themes.jpg)
 
 | | |
 |---|---|
-| ![Glass theme](docs/screenshots/glass-home.jpg) | ![Glass theme: for you](docs/screenshots/glass-for-you.jpg) |
+| ![Cam (Glass) theme](docs/screenshots/theme-cam.jpg) | ![Aura theme](docs/screenshots/theme-aura.jpg) |
+| ![Lumen theme](docs/screenshots/theme-lumen.jpg) | ![Neon theme](docs/screenshots/theme-neon.jpg) |
 | ![Gazete theme](docs/screenshots/theme-gazete.jpg) | ![Teletext theme](docs/screenshots/theme-teletext.jpg) |
-| ![Neon theme](docs/screenshots/home-continue-watching.png) | ![Match day](docs/screenshots/match-panel.jpg) |
+| ![Kick-off card over any app](docs/screenshots/kickoff-card.jpg) | ![Match day panel](docs/screenshots/match-panel.jpg) |
+| ![WiZ backlight panel](docs/screenshots/light-panel.jpg) | ![Neon Wrapped](docs/screenshots/wrapped.jpg) |
+| ![Search](docs/screenshots/search.jpg) | ![Control center](docs/screenshots/control-center.jpg) |
 
 ---
 
