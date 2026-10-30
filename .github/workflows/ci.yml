@@ -22,10 +22,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # The wrapper points at a local Gradle zip on the dev machine; CI downloads it instead
-      - name: Use the official Gradle distribution
-        run: sed -i 's#^distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-bin.zip#' gradle/wrapper/gradle-wrapper.properties
-
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Unit tests

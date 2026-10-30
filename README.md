@@ -38,10 +38,11 @@ Code, scripts and docs are in English.
 11. [Languages](#languages)
 12. [Performance](#performance)
 13. [Development](#development)
-14. [Troubleshooting](#troubleshooting)
-15. [Known limitations](#known-limitations)
-16. [Undo everything](#undo-everything)
-17. [Credits and licenses](#credits-and-licenses)
+14. [Contributing](#contributing)
+15. [Troubleshooting](#troubleshooting)
+16. [Known limitations](#known-limitations)
+17. [Undo everything](#undo-everything)
+18. [Credits and licenses](#credits-and-licenses)
 
 ---
 
@@ -274,7 +275,6 @@ The scripts assume this layout (change the paths at the top of the scripts if yo
 C:\mibox\platform-tools\adb.exe
 C:\mibox\tools\jdk17\
 C:\mibox\tools\android-sdk\
-C:\mibox\tools\gradle-8.11.1-bin.zip      # optional, used by the wrapper
 ```
 
 **On the box**
@@ -325,10 +325,9 @@ C:\mibox\platform-tools\adb.exe shell settings put secure screensaver_components
 Invoke-WebRequest https://dl.google.com/android/repository/platform-tools-latest-windows.zip -OutFile pt.zip
 Expand-Archive pt.zip C:\mibox
 
-# JDK 17 (Temurin), Android command-line tools, Gradle
+# JDK 17 (Temurin) and the Android command-line tools (the Gradle wrapper fetches Gradle itself)
 Invoke-WebRequest "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse" -OutFile jdk.zip
 Invoke-WebRequest https://dl.google.com/android/repository/commandlinetools-win-11076708_latest.zip -OutFile clt.zip
-Invoke-WebRequest https://services.gradle.org/distributions/gradle-8.11.1-bin.zip -OutFile C:\mibox\tools\gradle-8.11.1-bin.zip
 # unzip jdk.zip to C:\mibox\tools\jdk17 and clt.zip's cmdline-tools to
 # C:\mibox\tools\android-sdk\cmdline-tools\latest
 ```
@@ -341,10 +340,6 @@ SM=/c/mibox/tools/android-sdk/cmdline-tools/latest/bin/sdkmanager.bat
 yes | "$SM" --sdk_root='C:\mibox\tools\android-sdk' --licenses
 "$SM" --sdk_root='C:\mibox\tools\android-sdk' "platforms;android-35" "build-tools;35.0.0"
 ```
-
-The Gradle wrapper in `launcher/gradle/wrapper/gradle-wrapper.properties` points at the local
-zip. To let it download Gradle instead, set `distributionUrl` back to
-`https\://services.gradle.org/distributions/gradle-8.11.1-bin.zip`.
 
 ### 3. Connect
 
@@ -589,6 +584,29 @@ GitHub Actions runs the unit tests and a build on every push and pull request
 (`.github/workflows/ci.yml`). Publishing a release attaches its APK to GitHub Packages
 (`.github/workflows/package.yml`). Versions follow [SemVer](https://semver.org/); the tag is
 `v<versionName>` from `app/build.gradle.kts`.
+
+---
+
+## Contributing
+
+Pull requests, bug reports and ideas are welcome. The short version:
+
+1. **Open an issue first** for anything bigger than a small fix (a new theme, another club for
+   match day, a new device), so we can agree on the approach before you spend time on it. Bugs
+   and ideas have [issue templates](https://github.com/lastcodeb/Serwy-Launcher/issues/new/choose).
+2. **Fork, branch from `main`**, and keep one change per pull request.
+3. **Run the tests** (`.\gradlew.bat testDebugUnitTest`) and build a key-free release
+   (`.\gradlew.bat assembleRelease "-Ppixabay.apiKey="`). CI runs both on every pull request.
+4. **Try it on a real box or the Android TV emulator** (API 30+) and say in the pull request
+   what you tested on, with screenshots for anything visible.
+5. **Never commit keys**: the Pixabay key lives in `launcher/local.properties`, which is ignored.
+
+Good first areas: other football clubs (match day is Galatasaray-only today), more UI languages
+(see [Languages](#languages)), testing on boxes other than the Mi Box S, and anything in
+[Known limitations](#known-limitations).
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the code style, the translation rule and the review
+process. By contributing you agree that your work is released under the [MIT License](LICENSE).
 
 ---
 

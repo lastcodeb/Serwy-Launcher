@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work or looks wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: Xiaomi Mi TV Box S 2nd Gen, Android 11
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Launcher version
+      description: "The release you installed, or: adb shell dumpsys package dev.mibox.neon | grep versionName"
+      placeholder: "1.1.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme
+      options: [Neon, Cam (Glass), Gazete, Teletext, Lumen, Aura, Not theme-related]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log excerpt
+      description: "`adb logcat` around the moment it happened, if you can. Remove anything private."
+      render: text
+  - type: textarea
+    id: screens
+    attributes:
+      label: Screenshots
+      description: "`adb exec-out screencap -p > screen.png` works on most boxes."
