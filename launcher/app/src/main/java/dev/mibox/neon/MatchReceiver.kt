@@ -155,9 +155,10 @@ class MatchReceiver : BroadcastReceiver() {
         }
         val ip = runBlocking { prefs.wizIp.first() } ?: return
         synchronized(EffectLock) {
-            val before = Wiz.pilot(ip) ?: return
+            val before = Wiz.pilot(ip)
+            Log.i(TAG, "effect $kind: light before $before")
             // A light that is off stays off
-            if (!before.on) return
+            if (before == null || !before.on) return
             try {
                 runBlocking { MatchEffects.play(kind) { Wiz.set(ip, it) } }
             } finally {
@@ -214,8 +215,14 @@ object MatchAlarms {
         val store = MatchStore(app)
         val old = store.track()
         val moved = old != null && old.eventId == next.eventId && old.kickoffMs != next.kickoffMs
-        // A fired alarm leaves its PendingIntent behind, so liveness is judged by the stored due time
-        if (old?.eventId == next.eventId && !moved && store.nextPollAt() > now - POLL_GRACE_MS) return
+        // A fired alarm leaves its PendingIntent behind, so liveness is judged by the stored due time.
+        // An update, a force stop or a reboot deletes the alarm but not that time: set it again
+        // (same pending intent, so a chain that is still ticking is merely re-asserted)
+        if (old?.eventId == next.eventId && !moved && store.nextPollAt() > now - POLL_GRACE_MS) {
+            val due = maxOf(store.nextPollAt(), now)
+            set(app, pollPending(app, PendingIntent.FLAG_UPDATE_CURRENT), due)
+            return
+        }
         when {
             old?.eventId != next.eventId -> store.saveTrack(MatchTrack(next.eventId, next.slug, next.kickoffMs))
             moved -> store.saveTrack(old!!.copy(kickoffMs = next.kickoffMs)) // rescheduled by the league
