@@ -65,8 +65,9 @@ fun rememberNow(): State<LocalDateTime> = produceState(LocalDateTime.now()) {
 
 /**
  * Design: y 70–140px → a 35dp row; chips 10dp apart, gear flush with the right margin. The
- * Galatasaray match chip sits right after the clock; with it present the clock chip uses tighter
- * paddings and an ellipsized city so the row fits the 864dp between the margins.
+ * Galatasaray match chip sits right after the clock; with it (or the now-playing chip) present
+ * the bar goes compact so the row, search and gear included, fits the 864dp between the margins:
+ * the clock chip drops the date and tightens its paddings, the RAM chip's button keeps only its bolt.
  */
 @Composable
 fun TopBar(
@@ -100,7 +101,7 @@ fun TopBar(
         }
         LightChip(vm, onOpenLight)
         SpeedChip(vm, onOpenNet)
-        RamChip(vm)
+        RamChip(vm, compact = matchOn || playing != null)
         NeonSurface(onClick = onOpenSearch, modifier = Modifier.size(35.dp), shape = CircleShape) {
             Icon(
                 Icons.Default.Search,
@@ -142,11 +143,13 @@ private fun ClockWeatherChip(vm: LauncherViewModel, compact: Boolean, onOpen: ()
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(now.format(TimeFmt), style = BarText.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold))
-            Spacer(Modifier.width(if (compact) 6.dp else 8.dp))
-            Text(
-                now.format(DateFmt).replace(".", ""),
-                style = BarText.copy(fontSize = 12.sp, color = Neon.TextSoft),
-            )
+            if (!compact) {
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    now.format(DateFmt).replace(".", ""),
+                    style = BarText.copy(fontSize = 12.sp, color = Neon.TextSoft),
+                )
+            }
             Spacer(Modifier.width(if (compact) 8.dp else 12.dp))
             Box(Modifier.width(1.dp).height(19.dp).background(Color.White.copy(alpha = 0.15f)))
             Spacer(Modifier.width(if (compact) 7.dp else 10.dp))
@@ -213,7 +216,7 @@ private fun SpeedChip(vm: LauncherViewModel, onOpenNet: () -> Unit) {
 
 /** "CPU %66 ● [⚡ Boşalt]" in the design; RAM is what the box actually runs short of. */
 @Composable
-private fun RamChip(vm: LauncherViewModel) {
+private fun RamChip(vm: LauncherViewModel, compact: Boolean) {
     val ram by vm.ram.collectAsStateWithLifecycle()
     val freed by vm.freed.collectAsStateWithLifecycle()
     val pct = ram.usedPercent
@@ -236,12 +239,15 @@ private fun RamChip(vm: LauncherViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Canvas(Modifier.size(width = 8.dp, height = 18.dp)) { drawBolt() }
-                Spacer(Modifier.width(7.dp))
                 val f = freed
-                Text(
-                    if (f != null) t("Kapatıldı +{0} MB", f / (1024 * 1024)) else t("Boşalt"),
-                    style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
-                )
+                // Compact: the bolt alone, until there is a result to show
+                if (f != null || !compact) {
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        if (f != null) t("Kapatıldı +{0} MB", f / (1024 * 1024)) else t("Boşalt"),
+                        style = BarText.copy(fontSize = 13.sp, fontWeight = FontWeight.Bold),
+                    )
+                }
             }
         }
     }
