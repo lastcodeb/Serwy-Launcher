@@ -186,6 +186,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
     private var ambientActive = false
     private var restoreOnLeave = false
     private var flashUntil = 0L
+    @Volatile private var lastDiscoverAt = 0L
     private val accent = MutableStateFlow<Color?>(null)
     /** Light profile of the app being launched; applied instead of the restore when home is left. */
     private var pendingProfile: String? = null
@@ -763,7 +764,8 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         ContextCompat.registerReceiver(app, packageReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
 
         viewModelScope.launch(Dispatchers.IO) {
-            if (prefs.wizIp.first() == null) Wiz.discover()?.let { prefs.setWizIp(it) }
+            val saved = prefs.wizIp.first()
+            if (saved == null || Wiz.pilot(saved) == null) wizRediscover()
         }
         // The saved IP loads (or discovery finishes) after the first resume: catch up then
         viewModelScope.launch {
@@ -877,8 +879,9 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             // Coming back from the screensaver: let it put the light back before we look at it
             delay(700)
+            var lost = false
             wizLock.withLock {
-                val p = Wiz.pilot(ip) ?: return@withLock
+                val p = Wiz.pilot(ip) ?: run { lost = true; return@withLock }
                 _wiz.value = p
                 // Never switch on a light the user turned off (or the sleep timer did)
                 if (!ambient.value || !p.on || ambientActive) return@withLock
@@ -887,7 +890,23 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 restoreOnLeave = true
                 accent.value?.let { Wiz.set(ip, Wiz.color(it, p.dimming)) }
             }
+            // A new IP lands in wizIp, whose collector comes back here
+            if (lost) wizRediscover()
         }
+    }
+
+    /**
+     * The light has no fixed address: after a Wi-Fi or router change it answers somewhere else,
+     * so a saved IP that stops answering is replaced by whatever discovery finds. Throttled, since a
+     * light switched off at the wall looks the same and discovery costs a few seconds.
+     */
+    private suspend fun wizRediscover(): String? {
+        val now = System.currentTimeMillis()
+        if (now - lastDiscoverAt < REDISCOVER_MS) return null
+        lastDiscoverAt = now
+        val found = Wiz.discover() ?: return null
+        if (found != wizIp.value) prefs.setWizIp(found)
+        return found
     }
 
     private fun wizLeaveHome() {
@@ -952,7 +971,11 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
                 Wiz.discover()?.let { prefs.setWizIp(it) }
                 return@launch
             }
-            _wiz.value = Wiz.pilot(ip)
+            // "Search again" must really search when the saved light is gone
+            _wiz.value = Wiz.pilot(ip) ?: run {
+                lastDiscoverAt = 0L
+                wizRediscover()?.let(Wiz::pilot)
+            }
         }
     }
 
@@ -1380,6 +1403,7 @@ class LauncherViewModel(app: Application) : AndroidViewModel(app) {
         const val PROBE_MS = 3_000L
         const val WEATHER_TTL_MS = 30L * 60 * 1000
         const val FLASH_MS = 900L
+        const val REDISCOVER_MS = 60_000L
         const val SHOWCASE_SIZE = 5
         const val TAG = "Neon"
         const val BACKUP_QUIET_MS = 30_000L
