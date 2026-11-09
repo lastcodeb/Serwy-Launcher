@@ -524,8 +524,10 @@ class MatchStore(ctx: Context) {
 
 /** What the lights do. Shared by the ViewModel (through wizEffect) and the alarm receiver. */
 object MatchEffects {
-    private val Red = MatchConfig.Team.primary
-    private val Yellow = MatchConfig.Team.secondary
+    // Light colors, not the crest's: the crest red carries some blue, which a WiZ bulb turns into
+    // pink, and the gold reads orange. A touch of orange keeps the yellow from going green.
+    private val Red = Color(0xFFFF0000)
+    private val Yellow = Color(0xFFFFCC00)
     private val Off: JSONObject get() = JSONObject().put("state", false)
 
     /** Plays [kind] through [set]; the caller snapshots the light before and restores it after. */

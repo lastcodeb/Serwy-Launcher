@@ -190,7 +190,7 @@ APK. With ADB connected to the box (see [step 1](#1-enable-adb-on-the-box) and
 [step 3](#3-connect)):
 
 ```powershell
-adb install -r Serwy-Launcher-1.1.2.apk
+adb install -r Serwy-Launcher-1.1.3.apk
 adb shell appops set dev.mibox.neon GET_USAGE_STATS allow
 adb shell pm grant dev.mibox.neon android.permission.READ_TV_LISTINGS
 adb shell cmd package set-home-activity dev.mibox.neon/.MainActivity

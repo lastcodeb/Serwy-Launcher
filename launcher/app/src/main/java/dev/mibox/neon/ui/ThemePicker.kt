@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -184,8 +185,10 @@ private fun ThemeOption(
             Text(
                 blurbOf(theme),
                 style = st.type(11.sp, color = Color.Unspecified, role = TextRole.BODY).copy(textAlign = TextAlign.Center),
+                // Lines rather than a fixed height: Teletext's pixel font runs taller than the others
+                minLines = 3,
                 maxLines = 3,
-                modifier = Modifier.height(42.dp),
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }

@@ -52,12 +52,19 @@ fun Hero(content: HeroContent) {
             label = "hero",
         ) { c ->
             Box {
+                // With a subtitle under it, a smaller title sitting a bit higher keeps descenders
+                // (the ğ of "Doğu") clear of the second line
+                val sub = c.subtitle != null
                 Text(
                     c.title,
-                    modifier = Modifier.baselineAt(250.dp).offset(x = (-2).dp).widthIn(max = 620.dp),
+                    modifier = Modifier.baselineAt(if (sub) 242.dp else 250.dp).offset(x = (-2).dp).widthIn(max = 620.dp),
                     style = TextStyle(
                         fontFamily = Poppins,
-                        fontSize = if (c.title.length > 14) 56.sp else 75.sp,
+                        fontSize = when {
+                            c.title.length > 14 -> 56.sp
+                            sub -> 64.sp
+                            else -> 75.sp
+                        },
                         fontWeight = FontWeight.Black,
                         letterSpacing = (-1).sp,
                         brush = Neon.TitleBrush,

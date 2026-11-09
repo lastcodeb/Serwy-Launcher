@@ -108,7 +108,8 @@ fun LightPanel(vm: LauncherViewModel, onDismiss: () -> Unit) {
                 Chip(
                     if (wiz?.on == true) t("Kapat") else t("Aç"),
                     onClick = vm::wizToggle,
-                    leading = "⏻",
+                    // The box's fonts have no ⏻ (U+23FB): it drew as an empty box
+                    leading = "🔌",
                     primary = wiz?.on != true,
                     modifier = if (favorites.isEmpty()) Modifier.focusRequester(first) else Modifier,
                 )

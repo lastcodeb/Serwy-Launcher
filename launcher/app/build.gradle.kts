@@ -22,8 +22,8 @@ android {
         applicationId = "dev.mibox.neon"
         minSdk = 30 // Mi TV Box S 2nd Gen runs Android 11
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.1.2"
+        versionCode = 6
+        versionName = "1.1.3"
         buildConfigField("String", "PIXABAY_KEY", "\"$pixabayKey\"")
     }
 
